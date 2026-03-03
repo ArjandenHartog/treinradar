@@ -480,13 +480,13 @@ function QuickPreviewPopover({
   const mat = detail?.material ?? null
 
   // Adjust position to not go off-screen
-  let top = position.y - 280
-  let left = position.x - 150
+  let top = position.y - 240
+  let left = position.x - 115
   
   if (typeof window !== 'undefined') {
     if (top < 10) top = position.y + 10
     if (left < 10) left = 10
-    if (left + 320 > window.innerWidth) left = window.innerWidth - 330
+    if (left + 260 > window.innerWidth) left = window.innerWidth - 270
   }
 
   return (
@@ -510,9 +510,9 @@ function QuickPreviewPopover({
           zIndex: 3001,
           background: 'var(--card)',
           border: '1px solid var(--border)',
-          borderRadius: 10,
-          boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
-          width: 300,
+          borderRadius: 8,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          width: 240,
           overflow: 'hidden',
           fontFamily: "'Courier New',monospace",
         }}
@@ -520,26 +520,26 @@ function QuickPreviewPopover({
       >
         {/* Train image */}
         {mat?.image && (
-          <div style={{ background: '#050508', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#050508', padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={mat.image} alt={mat.fullName}
-              style={{ height: 50, objectFit: 'contain', display: 'block' }} />
+              style={{ height: 40, objectFit: 'contain', display: 'block' }} />
           </div>
         )}
 
         {/* Header */}
-        <div style={{ padding: '12px 12px 8px', position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <div style={{ padding: '10px 10px 6px', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
             <span
               style={{
                 background: bg,
                 color: '#fff',
-                padding: '3px 8px',
-                borderRadius: 4,
-                fontSize: 10,
+                padding: '2px 6px',
+                borderRadius: 3,
+                fontSize: 9,
                 fontWeight: 800,
-                letterSpacing: '.1em',
-                minWidth: 40,
+                letterSpacing: '.08em',
+                minWidth: 36,
                 textAlign: 'center',
                 flexShrink: 0,
               }}
@@ -547,10 +547,10 @@ function QuickPreviewPopover({
               {train.typeCode || '?'}
             </span>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--foreground)', lineHeight: 1.2 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--foreground)', lineHeight: 1.1 }}>
                 Trein {train.serviceNumber}
               </div>
-              <div style={{ fontSize: 9, color: 'var(--muted-foreground)' }}>
+              <div style={{ fontSize: 8, color: 'var(--muted-foreground)' }}>
                 {mat?.fullName || train.operator}
               </div>
             </div>
@@ -561,47 +561,48 @@ function QuickPreviewPopover({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 4,
               background: 'var(--muted)',
-              borderRadius: 5,
-              padding: '6px 8px',
+              borderRadius: 4,
+              padding: '5px 7px',
               border: `1px solid ${train.cancelled ? 'var(--destructive)' : train.delay >= 3 ? '#f59e0b' : '#22c55e'}`,
+              fontSize: 8,
             }}
           >
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: dColor, flexShrink: 0 }} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: dColor, flex: 1 }}>
-              {train.cancelled ? 'Geannuleerd' : train.delay <= 0 ? 'Op tijd' : `+${train.delay} min vertraging`}
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: dColor, flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, color: dColor, flex: 1 }}>
+              {train.cancelled ? 'Uitval' : train.delay <= 0 ? 'Op tijd' : `+${train.delay}min`}
             </span>
-            <span style={{ fontSize: 9, color: 'var(--muted-foreground)' }}>
+            <span style={{ color: 'var(--muted-foreground)' }}>
               {train.speedKmh}km/u
             </span>
           </div>
         </div>
 
         {/* Details grid */}
-        <div style={{ padding: '10px 12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: 8 }}>
-          <div style={{ background: 'var(--muted)', borderRadius: 4, padding: '5px 7px' }}>
-            <div style={{ fontSize: 7, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>Bestemming</div>
-            <div style={{ fontSize: 10, color: 'var(--foreground)', fontWeight: 600, lineHeight: 1.2 }}>
+        <div style={{ padding: '8px 10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: 6 }}>
+          <div style={{ background: 'var(--muted)', borderRadius: 3, padding: '4px 6px' }}>
+            <div style={{ fontSize: 6, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 1 }}>Bestemming</div>
+            <div style={{ fontSize: 9, color: 'var(--foreground)', fontWeight: 600, lineHeight: 1.2 }}>
               {train.destination || '–'}
             </div>
           </div>
-          <div style={{ background: 'var(--muted)', borderRadius: 4, padding: '5px 7px' }}>
-            <div style={{ fontSize: 7, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>Perron</div>
-            <div style={{ fontSize: 10, color: 'var(--foreground)', fontWeight: 600 }}>
+          <div style={{ background: 'var(--muted)', borderRadius: 3, padding: '4px 6px' }}>
+            <div style={{ fontSize: 6, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 1 }}>Perron</div>
+            <div style={{ fontSize: 9, color: 'var(--foreground)', fontWeight: 600 }}>
               {train.platform || '–'}
             </div>
           </div>
-          <div style={{ background: 'var(--muted)', borderRadius: 4, padding: '5px 7px' }}>
-            <div style={{ fontSize: 7, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>Vervoerder</div>
-            <div style={{ fontSize: 10, color: 'var(--foreground)', fontWeight: 600 }}>
+          <div style={{ background: 'var(--muted)', borderRadius: 3, padding: '4px 6px' }}>
+            <div style={{ fontSize: 6, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 1 }}>Vervoerder</div>
+            <div style={{ fontSize: 9, color: 'var(--foreground)', fontWeight: 600 }}>
               {train.operator}
             </div>
           </div>
           {mat?.code && (
-            <div style={{ background: 'var(--muted)', borderRadius: 4, padding: '5px 7px' }}>
-              <div style={{ fontSize: 7, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>Type</div>
-              <div style={{ fontSize: 10, color: 'var(--foreground)', fontWeight: 600 }}>
+            <div style={{ background: 'var(--muted)', borderRadius: 3, padding: '4px 6px' }}>
+              <div style={{ fontSize: 6, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 1 }}>Type</div>
+              <div style={{ fontSize: 9, color: 'var(--foreground)', fontWeight: 600 }}>
                 {mat.code}
               </div>
             </div>
@@ -610,19 +611,19 @@ function QuickPreviewPopover({
 
         {/* Material specs */}
         {mat && (
-          <div style={{ padding: '0 12px 10px', fontSize: 9, color: 'var(--muted-foreground)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ padding: '0 10px 8px', fontSize: 7, color: 'var(--muted-foreground)', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {mat.numberOfParts != null && (
-              <span style={{ background: 'rgba(59,130,246,0.1)', padding: '2px 6px', borderRadius: 3 }}>
+              <span style={{ background: 'rgba(59,130,246,0.1)', padding: '1px 4px', borderRadius: 2 }}>
                 {mat.numberOfParts}-delig
               </span>
             )}
             {mat.seats2nd != null && (
-              <span style={{ background: 'rgba(59,130,246,0.1)', padding: '2px 6px', borderRadius: 3 }}>
-                {mat.seats1st && mat.seats1st > 0 ? `1e:${mat.seats1st}·` : ''}2e:{mat.seats2nd}
+              <span style={{ background: 'rgba(59,130,246,0.1)', padding: '1px 4px', borderRadius: 2 }}>
+                {mat.seats1st && mat.seats1st > 0 ? `1e:${mat.seats1st}` : ''}2e:{mat.seats2nd}
               </span>
             )}
             {mat.topSpeedKmh != null && (
-              <span style={{ background: 'rgba(59,130,246,0.1)', padding: '2px 6px', borderRadius: 3 }}>
+              <span style={{ background: 'rgba(59,130,246,0.1)', padding: '1px 4px', borderRadius: 2 }}>
                 max {mat.topSpeedKmh}km/u
               </span>
             )}
@@ -630,7 +631,7 @@ function QuickPreviewPopover({
         )}
 
         {/* Button */}
-        <div style={{ padding: '0 12px 12px' }}>
+        <div style={{ padding: '0 10px 10px' }}>
           <button
             onClick={onViewDetails}
             style={{
@@ -638,9 +639,9 @@ function QuickPreviewPopover({
               background: '#3b82f6',
               border: 'none',
               color: '#fff',
-              padding: '7px 10px',
-              borderRadius: 5,
-              fontSize: 10,
+              padding: '6px 8px',
+              borderRadius: 4,
+              fontSize: 9,
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.2s',
@@ -652,7 +653,7 @@ function QuickPreviewPopover({
               (e.target as HTMLButtonElement).style.background = '#3b82f6'
             }}
           >
-            Volle details →
+            Details →
           </button>
         </div>
       </div>
