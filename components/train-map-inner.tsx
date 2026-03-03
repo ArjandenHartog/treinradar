@@ -48,7 +48,7 @@ function delayColor(delay: number, cancelled: boolean) {
 
 function makeTrainIcon(
   typeCode: string, delay: number, cancelled: boolean,
-  heading: number, selected: boolean
+  selected: boolean
 ): L.DivIcon {
   const bg     = typeColor(typeCode)
   const ring   = cancelled ? '#ef4444' : delay >= 15 ? '#ef4444' : delay >= 3 ? '#f59e0b' : 'transparent'
@@ -57,7 +57,6 @@ function makeTrainIcon(
   const shadow = selected
     ? '0 0 0 3px rgba(59,130,246,.65),0 3px 12px rgba(0,0,0,.7)'
     : '0 1px 6px rgba(0,0,0,.6)'
-  const arrowDeg = heading - 90
 
   return L.divIcon({
     html: `<div style="
@@ -71,7 +70,6 @@ function makeTrainIcon(
       white-space:nowrap;transform:scale(${scale});transform-origin:center;
       transition:transform .15s;cursor:pointer;
     ">
-      <span style="font-size:8px;display:inline-block;transform:rotate(${arrowDeg}deg);transform-origin:center">▶</span>
       ${typeCode || '?'}
     </div>`,
     className: '',
@@ -441,6 +439,67 @@ function TrainDetailPanel({ train, onClose, onStationClick }: {
   )
 }
 
+// ─── Animated Marker Component ────────────────────────────────────────────────
+
+function AnimatedTrainMarker({
+  train,
+  selected,
+  onSelect,
+}: {
+  train: PositionedTrain
+  selected: boolean
+  onSelect: () => void
+}) {
+  const [animPos, setAnimPos] = useState({ lat: train.lat, lng: train.lng })
+  const prevPosRef = useRef({ lat: train.lat, lng: train.lng })
+  const startTimeRef = useRef(0)
+  const rafRef = useRef<number | undefined>(undefined)
+
+  useEffect(() => {
+    // If position changed, animate from previous to current
+    const prev = prevPosRef.current
+    if (prev.lat !== train.lat || prev.lng !== train.lng) {
+      prevPosRef.current = { lat: train.lat, lng: train.lng }
+      startTimeRef.current = Date.now()
+
+      const animate = () => {
+        const elapsed = Date.now() - startTimeRef.current
+        const duration = 1000 // 1 second animation to match our 1s update interval
+        const progress = Math.min(elapsed / duration, 1)
+
+        // Easing function (easeInOutCubic)
+        const easeProgress = progress < 0.5
+          ? 4 * progress * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2
+
+        setAnimPos({
+          lat: prev.lat + (train.lat - prev.lat) * easeProgress,
+          lng: prev.lng + (train.lng - prev.lng) * easeProgress,
+        })
+
+        if (progress < 1) {
+          rafRef.current = requestAnimationFrame(animate)
+        }
+      }
+
+      rafRef.current = requestAnimationFrame(animate)
+    }
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [train.lat, train.lng])
+
+  return (
+    <Marker
+      position={[animPos.lat, animPos.lng]}
+      icon={makeTrainIcon(train.typeCode, train.delay, train.cancelled, selected)}
+      zIndexOffset={selected ? 2000 : train.delay > 0 ? 100 : 0}
+      eventHandlers={{ click: onSelect }}
+    />
+  )
+}
+
 // ─── Main map ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -539,12 +598,11 @@ export default function TrainMapInner({ stations, trains }: Props) {
 
         {/* Train markers */}
         {trains.map(train => (
-          <Marker
+          <AnimatedTrainMarker
             key={train.id}
-            position={[train.lat, train.lng]}
-            icon={makeTrainIcon(train.typeCode, train.delay, train.cancelled, train.heading, train.id === selectedId)}
-            zIndexOffset={train.id === selectedId ? 2000 : train.delay > 0 ? 100 : 0}
-            eventHandlers={{ click: () => setSelectedId(id => id === train.id ? null : train.id) }}
+            train={train}
+            selected={train.id === selectedId}
+            onSelect={() => setSelectedId(id => id === train.id ? null : train.id)}
           />
         ))}
 

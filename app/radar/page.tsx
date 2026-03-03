@@ -204,7 +204,7 @@ export default function RadarPage() {
   }, [fetchStations, fetchTrains, fetchStats, fetchDisruptions])
 
   useEffect(() => {
-    const t1 = setInterval(fetchTrains, 5_000) // Elke 5s voor supersnelle updates
+    const t1 = setInterval(fetchTrains, 1_000) // Elke seconde voor real-time updates
     const t2 = setInterval(fetchStats, 30_000)
     const t3 = setInterval(fetchDisruptions, 90_000)
     return () => { clearInterval(t1); clearInterval(t2); clearInterval(t3) }

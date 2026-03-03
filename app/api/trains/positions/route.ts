@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { getVehicles } from '@/lib/ns-api'
 import { supabase } from '@/lib/supabase'
 
-// ─── In-memory cache for positions (10 second TTL) ─────────────────────────────
+// ─── In-memory cache for positions (500ms TTL for real-time updates) ─────────────────────────────
 let positionsCache: { data: any; timestamp: number } | null = null
-const CACHE_TTL = 10_000 // 10 seconds
+const CACHE_TTL = 500 // 500ms for smooth 1-second refresh
 
 /**
  * Lightweight positioned train — returned on every 30s poll.
