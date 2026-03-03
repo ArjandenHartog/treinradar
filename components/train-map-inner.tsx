@@ -32,10 +32,22 @@ const FACILITY_ICON: Record<string, React.ComponentType<any>> = {
 // ─── Type → accent color ──────────────────────────────────────────────────────
 
 const TYPE_BG: Record<string, string> = {
-  IC: '#1d4ed8', ICD: '#1e40af', ICE: '#5b21b6', SPR: '#15803d',
+  // NS intercity familie
+  IC:  '#1d4ed8', ICD: '#1e40af', ICE: '#5b21b6',
+  // NS sprinter familie
+  SPR: '#15803d', SNG: '#166534', SLT: '#14532d',
+  // Internationaal
   INT: '#92400e', THA: '#9d174d', EUR: '#3730a3', NT: '#374151',
-  ARR: '#065f46', QBZ: '#075985', BLN: '#164e63', DB: '#991b1b',
-  RRR: '#6b21a8', '?': '#374151',
+  // Regionale operators
+  ARR: '#065f46',   // Arriva (groen)
+  RNT: '#b45309',   // R-net (oranje-bruin)
+  VLL: '#b45309',   // Valleilijn (zelfde als R-net)
+  FLI: '#065f46',   // FLIRT (Arriva/EBS)
+  GTW: '#065f46',   // GTW (Arriva diesel)
+  // Overig
+  QBZ: '#075985', BLN: '#164e63', DB: '#991b1b',
+  RRR: '#6b21a8', STP: '#166534',
+  '?': '#374151',
 }
 function typeColor(code: string) { return TYPE_BG[code?.toUpperCase()] ?? TYPE_BG['?'] }
 function delayColor(delay: number, cancelled: boolean) {
@@ -48,7 +60,7 @@ function delayColor(delay: number, cancelled: boolean) {
 
 function makeTrainIcon(
   typeCode: string, delay: number, cancelled: boolean,
-  selected: boolean
+  selected: boolean, heading?: number
 ): L.DivIcon {
   const bg     = typeColor(typeCode)
   const ring   = cancelled ? '#ef4444' : delay >= 15 ? '#ef4444' : delay >= 3 ? '#f59e0b' : 'transparent'
@@ -58,23 +70,37 @@ function makeTrainIcon(
     ? '0 0 0 3px rgba(59,130,246,.65),0 3px 12px rgba(0,0,0,.7)'
     : '0 1px 6px rgba(0,0,0,.6)'
 
+  // Kleine richtingspijl boven het label
+  const arrowHtml = (heading != null && heading >= 0)
+    ? `<div style="
+        position:absolute;top:-7px;left:50%;transform:translateX(-50%) rotate(${heading}deg);
+        width:0;height:0;
+        border-left:4px solid transparent;border-right:4px solid transparent;
+        border-bottom:7px solid ${bg};
+        filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));
+      "></div>`
+    : ''
+
   return L.divIcon({
-    html: `<div style="
-      display:inline-flex;align-items:center;gap:3px;
-      background:${bg};color:#fff;
-      font-family:'Courier New',monospace;font-size:9px;font-weight:800;
-      padding:2px 6px 2px 4px;border-radius:4px;
-      border:${ringW}px solid ${ring};
-      box-shadow:${shadow};
-      opacity:${cancelled ? .55 : 1};letter-spacing:.08em;line-height:1.6;
-      white-space:nowrap;transform:scale(${scale});transform-origin:center;
-      transition:transform .15s;cursor:pointer;
-    ">
-      ${typeCode || '?'}
+    html: `<div style="position:relative;display:inline-block;">
+      ${arrowHtml}
+      <div style="
+        display:inline-flex;align-items:center;gap:3px;
+        background:${bg};color:#fff;
+        font-family:'Courier New',monospace;font-size:9px;font-weight:800;
+        padding:2px 6px 2px 4px;border-radius:4px;
+        border:${ringW}px solid ${ring};
+        box-shadow:${shadow};
+        opacity:${cancelled ? .55 : 1};letter-spacing:.08em;line-height:1.6;
+        white-space:nowrap;transform:scale(${scale});transform-origin:center;
+        transition:transform .15s;cursor:pointer;
+      ">
+        ${typeCode || '?'}
+      </div>
     </div>`,
     className: '',
     iconSize: undefined,
-    iconAnchor: [20, 12],
+    iconAnchor: [20, 18],
   })
 }
 
@@ -181,10 +207,11 @@ function StopRow({ stop, onStationClick }: {
 
 // ─── Detail panel ─────────────────────────────────────────────────────────────
 
-function TrainDetailPanel({ train, onClose, onStationClick }: {
+function TrainDetailPanel({ train, onClose, onStationClick, onStopsLoaded }: {
   train: PositionedTrain
   onClose: () => void
   onStationClick: (lat: number, lng: number, name: string) => void
+  onStopsLoaded?: (stops: Array<[number, number]>) => void
 }) {
   const [detail, setDetail] = useState<TrainDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -200,9 +227,18 @@ function TrainDetailPanel({ train, onClose, onStationClick }: {
     setLoading(true)
     fetch(`/api/trains/info?ritnummer=${encodeURIComponent(train.serviceNumber)}`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { setDetail(d); setLoading(false) })
+      .then((d: TrainDetail | null) => {
+        setDetail(d)
+        setLoading(false)
+        if (d?.stops && onStopsLoaded) {
+          const coords = d.stops
+            .filter(s => s.lat && s.lng)
+            .map(s => [s.lat!, s.lng!] as [number, number])
+          if (coords.length > 1) onStopsLoaded(coords)
+        }
+      })
       .catch(() => setLoading(false))
-  }, [train.serviceNumber])
+  }, [train.serviceNumber, onStopsLoaded])
 
   const mat    = detail?.material ?? null
   const bg     = typeColor(train.typeCode)
@@ -718,7 +754,7 @@ function AnimatedTrainMarker({
   return (
     <Marker
       position={[animPos.lat, animPos.lng]}
-      icon={makeTrainIcon(train.typeCode, train.delay, train.cancelled, selected)}
+      icon={makeTrainIcon(train.typeCode, train.delay, train.cancelled, selected, train.heading)}
       zIndexOffset={selected ? 2000 : train.delay > 0 ? 100 : 0}
       eventHandlers={{ click: (e) => onSelect(e.originalEvent) }}
     >
@@ -779,6 +815,7 @@ interface Props {
 
 export default function TrainMapInner({ stations, trains }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [routeStops, setRouteStops] = useState<Array<[number, number]>>([])
   const mapRef = useRef<L.Map | null>(null)
 
   const selected = useMemo(
@@ -787,8 +824,15 @@ export default function TrainMapInner({ stations, trains }: Props) {
   )
 
   const handleMarkerClick = (trainId: string, _e: any) => {
-    setSelectedId(id => id === trainId ? null : trainId)
+    setSelectedId(id => {
+      if (id === trainId) { setRouteStops([]); return null }
+      return trainId
+    })
   }
+
+  const handleStopsLoaded = useCallback((stops: Array<[number, number]>) => {
+    setRouteStops(stops)
+  }, [])
 
   const flyToStation = useCallback((lat: number, lng: number, _name: string) => {
     mapRef.current?.flyTo([lat, lng], 14, { animate: true, duration: 0.8 })
@@ -880,11 +924,11 @@ export default function TrainMapInner({ stations, trains }: Props) {
           />
         ))}
 
-        {/* Route line for selected train — thin blue trace through station dots */}
-        {selected && (
+        {/* Route line for selected train — trekt door alle stops */}
+        {selected && routeStops.length > 1 && (
           <Polyline
-            positions={[[selected.lat, selected.lng]]}
-            pathOptions={{ color: '#3b82f6', weight: 2, opacity: 0.4, dashArray: '4 6' }}
+            positions={routeStops}
+            pathOptions={{ color: '#3b82f6', weight: 2.5, opacity: 0.55, dashArray: '6 5' }}
           />
         )}
       </MapContainer>
@@ -894,8 +938,9 @@ export default function TrainMapInner({ stations, trains }: Props) {
         <TrainDetailPanel
           key={selected.id}
           train={selected}
-          onClose={() => setSelectedId(null)}
+          onClose={() => { setSelectedId(null); setRouteStops([]) }}
           onStationClick={flyToStation}
+          onStopsLoaded={handleStopsLoaded}
         />
       )}
     </div>

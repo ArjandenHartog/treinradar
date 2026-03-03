@@ -8,8 +8,12 @@ async function nsGet<T>(path: string): Promise<T> {
       'Accept': 'application/json',
     },
     next: { revalidate: 0 },
+    signal: AbortSignal.timeout(8000),
   })
-  if (!res.ok) throw new Error(`NS API ${path} → ${res.status}`)
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`NS API ${path} → ${res.status}${body ? ': ' + body.slice(0, 100) : ''}`)
+  }
   return res.json()
 }
 
@@ -218,6 +222,7 @@ async function vtGet<T>(path: string): Promise<T> {
   const res = await fetch(`${VT_BASE}${path}`, {
     headers: { 'Ocp-Apim-Subscription-Key': NS_KEY, 'Accept': 'application/json' },
     next: { revalidate: 0 },
+    signal: AbortSignal.timeout(6000),
   })
   if (!res.ok) throw new Error(`VT API ${path} → ${res.status}`)
   return res.json()

@@ -32,6 +32,8 @@ export interface TrainStats {
   carriers: CarrierStat[]
   mostDelayed: { serviceNumber: string; delay: number; destination: string; origin: string } | null
   updatedAt: string
+  onTimeToday?: number
+  cancelledPercentage?: number
 }
 
 export async function GET() {
@@ -130,6 +132,9 @@ export async function GET() {
         origin: mostDelayed.station_code,
       } : null,
       updatedAt: new Date().toISOString(),
+      // Extra stats
+      onTimeToday: Math.max(0, totalToday - delayedToday - cancelledToday),
+      cancelledPercentage: totalToday > 0 ? Math.round((cancelledToday / totalToday) * 1000) / 10 : 0,
     } satisfies TrainStats)
   } catch (err) {
     console.error('Stats error:', err)

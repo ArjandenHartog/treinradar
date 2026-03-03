@@ -47,21 +47,21 @@ export interface TrainDetail {
 // ─── Per-process cache (5 min TTL) ───────────────────────────────────────────
 
 const infoCache = new Map<string, { data: TrainDetail; ts: number }>()
-const CACHE_TTL = 5 * 60_000
+const CACHE_TTL = 90_000 // 90 seconden — stops en vertraging veranderen frequent
 
 // ─── Facility mapping ─────────────────────────────────────────────────────────
 
 function mapFacilities(raw: string[]): Facility[] {
   return raw.map(f => {
-    const u = f.toUpperCase()
-    if (u === 'WIFI')        return 'wifi'
-    if (u === 'FIETS')       return 'fiets'
-    if (u === 'STROOM')      return 'stopcontact'
-    if (u === 'TOILET')      return 'toilet'
-    if (u === 'TOEGANKELIJK') return 'toegankelijk'
-    if (u === 'RESTAURANT' || u === 'BISTRO') return 'restaurant'
-    if (u === 'STILLE_COUPE' || u.includes('STILT')) return 'stille-coupe'
-    if (u === 'AIRCO')       return 'airco'
+    const u = f.toUpperCase().replace(/[_\-\s]/g, '')
+    if (u === 'WIFI' || u.includes('WIFI'))         return 'wifi'
+    if (u === 'FIETS' || u.includes('FIETS'))       return 'fiets'
+    if (u === 'STROOM' || u === 'STOPCONTACT' || u.includes('STROOM')) return 'stopcontact'
+    if (u === 'TOILET' || u === 'WC')               return 'toilet'
+    if (u === 'TOEGANKELIJK' || u.includes('ACCESS')) return 'toegankelijk'
+    if (u === 'RESTAURANT' || u === 'BISTRO' || u === 'RESTAURATIE') return 'restaurant'
+    if (u.includes('STILLE') || u.includes('QUIET')) return 'stille-coupe'
+    if (u === 'AIRCO' || u.includes('AIRCO') || u.includes('CLIMATE')) return 'airco'
     return null
   }).filter((f): f is Facility => f !== null)
 }

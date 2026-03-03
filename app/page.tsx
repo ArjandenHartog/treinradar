@@ -156,7 +156,8 @@ export default function Dashboard() {
     if (!mounted.current) return
     const { data } = await supabase
       .from('disruptions')
-      .select('id, title, type, impact, affected_stations')
+      .select('id, title, type, impact, topic, expectation, period, additional_travel_time, start_time, end_time, affected_stations')
+      .eq('is_active', true)
     if (data && mounted.current) setDisruptions(data as Disruption[])
   }, [])
 
@@ -214,9 +215,33 @@ export default function Dashboard() {
 
       <Header />
 
-      {/* DASHBOARD: Refresh + Live status */}
+      {/* DASHBOARD: Tabs + Refresh + Live status */}
       <div className="sticky top-0 z-40 border-b border-white/[0.06] bg-background/95 backdrop-blur-md -mt-px">
-        <div className="mx-auto flex max-w-[1600px] items-center px-4 py-2.5">
+        <div className="mx-auto flex max-w-[1600px] items-center px-4 py-2.5 gap-2">
+
+          {/* Tab buttons */}
+          <div className="flex items-center gap-1 rounded-md border border-white/[0.06] bg-white/[0.02] p-0.5">
+            {(['radar', 'verstoringen'] as Tab[]).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={cn(
+                  'rounded px-3 py-1 text-[10px] font-medium uppercase tracking-[0.1em] transition-colors',
+                  tab === t
+                    ? 'bg-white/[0.1] text-white'
+                    : 'text-zinc-500 hover:text-zinc-300'
+                )}
+              >
+                {t === 'radar' ? 'Radar' : 'Verstoringen'}
+                {t === 'verstoringen' && allDisruptions.length > 0 && (
+                  <span className="ml-1.5 rounded-full bg-amber-500/30 px-1.5 py-0.5 text-[8px] font-semibold text-amber-400">
+                    {allDisruptions.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
           <div className="ml-auto flex items-center gap-3">
             <button
               onClick={refreshAll}

@@ -2,11 +2,53 @@ import { NextResponse } from 'next/server'
 import { getDepartures, getDelayMinutes } from '@/lib/ns-api'
 import { supabase } from '@/lib/supabase'
 
-// Major Dutch railway stations to poll
+// Major Dutch railway stations to poll — covers NS + regional operators incl. Valleilijn/R-net
 const MAJOR_STATIONS = [
-  'AMS', 'UT', 'RTD', 'EHV', 'GVC', 'LW', 'AMF', 'ZWL', 'GD', 'AH',
-  'NM', 'HT', 'HLM', 'AMR', 'BD', 'HRL', 'ZL', 'DV', 'DT', 'BTL',
-  'TBU', 'WD', 'ASD', 'ASDL', 'ASRA', 'HVS', 'MN', 'VLIS', 'GST', 'HFTR',
+  // Grote NS-knooppunten
+  'AMS',  // Amsterdam Centraal
+  'UT',   // Utrecht Centraal
+  'RTD',  // Rotterdam Centraal
+  'EHV',  // Eindhoven Centraal
+  'GVC',  // Den Haag Centraal
+  'LW',   // Leeuwarden
+  'AMF',  // Amersfoort
+  'ZWL',  // Zwolle
+  'GD',   // Gouda
+  'AH',   // Arnhem Centraal
+  'NM',   // Nijmegen
+  'HT',   // Heerlen
+  'HLM',  // Haarlem
+  'AMR',  // Alkmaar
+  'BD',   // Breda
+  'HRL',  // Heerenveen
+  'DV',   // Deventer
+  'DT',   // Dordrecht
+  'BTL',  // Barendrecht
+  'TBU',  // Tilburg
+  'WD',   // Woerden
+  'ASD',  // Amsterdam Amstel
+  'ASDL', // Amsterdam Lelylaan
+  'ASRA', // Amsterdam RAI
+  'HVS',  // Hilversum
+  'MN',   // Middelburg (Arriva)
+  'VLIS', // Vlissingen
+  'GST',  // Goes (Arriva)
+  // Overige grote stations
+  'ASS',  // Amsterdam Sloterdijk
+  'LLS',  // Lelystad Centrum
+  'APD',  // Apeldoorn
+  'SHL',  // Schiphol Airport
+  'ZL',   // Zoetermeer (? / Den Haag regio)
+  // Valleilijn stations (EBS/R-net)
+  'ED',   // Ede-Wageningen
+  'BRNV', // Barneveld Noord
+  'BRNC', // Barneveld Centrum
+  'AMI',  // Amersfoort Schothorst
+  // Arriva Friesland/Groningen
+  'HDN',  // Hoorn
+  'KAM',  // Kampen
+  'SNK',  // Sneek
+  'HDE',  // Den Helder
 ]
 
 export async function GET() {
@@ -19,7 +61,8 @@ export async function GET() {
       MAJOR_STATIONS.map(s => getDepartures(s, 40))
     )
 
-    const seen = new Set<string>()
+    // trainSeen: bijhouden welke treinen (service number) al verwerkt zijn voor deduplicatie
+    const trainSeen = new Map<string, boolean>()
     const rows: Record<string, unknown>[] = []
 
     for (let i = 0; i < MAJOR_STATIONS.length; i++) {
@@ -31,11 +74,15 @@ export async function GET() {
         const trainNumber = dep.product?.number
         if (!trainNumber) continue
 
-        const depKey = `${trainNumber}_${stationCode}_${today}`
-        if (seen.has(depKey)) continue
-        seen.add(depKey)
-
         const delay = getDelayMinutes(dep.plannedDateTime, dep.actualDateTime)
+
+        // Sleutels: één rij per trein per vertrekstation per dag
+        const depKey = `${trainNumber}_${stationCode}_${today}`
+
+        // Voor statistieken: track één unieke trein overall (eerste keer dat we 'm zien)
+        if (!trainSeen.has(trainNumber)) {
+          trainSeen.set(trainNumber, true)
+        }
 
         rows.push({
           id: depKey,
@@ -45,7 +92,7 @@ export async function GET() {
           destination: dep.direction ?? '',
           destination_actual: dep.direction ?? '',
           type: dep.product?.longCategoryName ?? dep.trainCategory ?? '',
-          type_code: dep.product?.categoryCode ?? '',
+          type_code: dep.product?.categoryCode ?? dep.product?.shortCategoryName ?? '',
           operator: dep.product?.operatorName ?? dep.product?.operatorCode ?? 'NS',
           delay,
           cancelled: dep.cancelled ?? false,

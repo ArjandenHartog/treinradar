@@ -43,7 +43,7 @@ export function Header() {
           <div className="hidden sm:block">
             <div className="text-sm font-semibold leading-none text-white">Treinradar</div>
             <div className="text-[9px] uppercase tracking-widest text-zinc-600 mt-0.5">
-              Realtime spoorwegnet Nederland
+              NS · Arriva · R-net · Valleilijn
             </div>
           </div>
         </Link>

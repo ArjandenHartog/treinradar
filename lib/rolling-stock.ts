@@ -144,6 +144,98 @@ const STOCK: Record<string, MaterialSpec> = {
     topSpeedKmh: 160,
     facilities: ['toegankelijk', 'toilet', 'airco'],
   },
+
+  // EBS Valleilijn FLIRT3 diesel treinstellen
+  FLIRT3: {
+    code: 'FLIRT3',
+    fullName: 'Stadler FLIRT3 (Valleilijn)',
+    images: { default: '/slt_4.png' },
+    seats: {
+      3: { first: 0, second: 186 },
+      default: { first: 0, second: 186 },
+    },
+    lengths: { 3: 74, default: 74 },
+    topSpeedKmh: 160,
+    facilities: ['toegankelijk', 'toilet', 'airco', 'fiets'],
+  },
+
+  // Arriva GTW diesel
+  GTW: {
+    code: 'GTW',
+    fullName: 'Bombardier GTW 2/6',
+    images: { default: '/slt_4.png' },
+    seats: {
+      2: { first: 0, second: 122 },
+      default: { first: 0, second: 122 },
+    },
+    lengths: { 2: 55, default: 55 },
+    topSpeedKmh: 140,
+    facilities: ['toegankelijk', 'airco'],
+  },
+
+  // Arriva CAF Civity
+  CIVITY: {
+    code: 'CIVITY',
+    fullName: 'CAF Civity (Arriva)',
+    images: { default: '/slt_4.png' },
+    seats: {
+      3: { first: 0, second: 212 },
+      default: { first: 0, second: 212 },
+    },
+    lengths: { 3: 80, default: 80 },
+    topSpeedKmh: 160,
+    facilities: ['wifi', 'toegankelijk', 'toilet', 'airco', 'fiets'],
+  },
+
+  // Connexxion/EBS Talent
+  TALENT: {
+    code: 'TALENT',
+    fullName: 'Bombardier Talent',
+    images: { default: '/slt_4.png' },
+    seats: {
+      2: { first: 0, second: 148 },
+      default: { first: 0, second: 148 },
+    },
+    lengths: { 2: 55, default: 55 },
+    topSpeedKmh: 140,
+    facilities: ['toegankelijk', 'airco'],
+  },
+
+  // Siemens Desiro (Arriva)
+  DESIRO: {
+    code: 'DESIRO',
+    fullName: 'Siemens Desiro Classic',
+    images: { default: '/slt_4.png' },
+    seats: {
+      2: { first: 0, second: 142 },
+      default: { first: 0, second: 142 },
+    },
+    lengths: { 2: 52, default: 52 },
+    topSpeedKmh: 140,
+    facilities: ['toegankelijk', 'airco'],
+  },
+
+  // Thalys (Fyra opvolger)
+  THA: {
+    code: 'THA',
+    fullName: 'Thalys (PBKA)',
+    images: { default: '/virm_4.png' },
+    seats: { default: { first: 113, second: 264 } },
+    lengths: { default: 200 },
+    topSpeedKmh: 300,
+    facilities: ['wifi', 'restaurant', 'stille-coupe', 'toegankelijk', 'stopcontact', 'toilet', 'airco'],
+  },
+
+  // Eurostar
+  EUR: {
+    code: 'EUR',
+    fullName: 'Eurostar e320',
+    images: { default: '/virm_4.png' },
+    seats: { default: { first: 206, second: 694 } },
+    lengths: { default: 400 },
+    topSpeedKmh: 320,
+    facilities: ['wifi', 'restaurant', 'stille-coupe', 'toegankelijk', 'stopcontact', 'toilet', 'airco'],
+  },
 }
 
 // ─── Lookup helpers ───────────────────────────────────────────────────────────
@@ -153,13 +245,32 @@ function normalise(raw: string): string {
   const u = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
   // Known aliases
   const MAP: Record<string, string> = {
-    'SNGDOORSERIES': 'SNG',
-    'SNGFLIRT3':     'SNG',
-    'VIRMM1':        'VIRM',
-    'ICMM1':         'ICM',
-    'ICMM1KOPLOPER': 'ICM',
-    'SLTSTADLER':    'SLT',
-    'SLTCORADIA':    'SLT',
+    'SNGDOORSERIES':  'SNG',
+    'SNGFLIRT3':      'SNG',
+    'VIRMM1':         'VIRM',
+    'ICMM1':          'ICM',
+    'ICMM1KOPLOPER':  'ICM',
+    'SLTSTADLER':     'SLT',
+    'SLTCORADIA':     'SLT',
+    // FLIRT varianten voor Valleilijn
+    'FLIRT3DIESEL':   'FLIRT3',
+    'STADLERFLIRT3':  'FLIRT3',
+    'FLIRT3EBS':      'FLIRT3',
+    'EBSFLIRT3':      'FLIRT3',
+    // GTW varianten
+    'GTW26':          'GTW',
+    'GTW28':          'GTW',
+    'BOMBARDIERGTW':  'GTW',
+    // Arriva
+    'CAFCIVITY':      'CIVITY',
+    'ARRIVAFLIRT':    'FLIRT',
+    'ARRIVADESIRO':   'DESIRO',
+    // Thalys / Eurostar aliassen
+    'THALYS':         'THA',
+    'PBKA':           'THA',
+    'EUROSTAR':       'EUR',
+    'E320':           'EUR',
+    'E300':           'EUR',
   }
   return MAP[u] ?? u
 }

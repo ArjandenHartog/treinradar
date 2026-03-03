@@ -279,7 +279,7 @@ export default function SettingsPage() {
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-2">Over Treinradar</h3>
               <p className="text-sm text-muted-foreground max-w-prose">
-                Treinradar is een onafhankelijke, open-source applicatie voor realtime monitoring van treinen in Nederland.
+                Treinradar is een onafhankelijke applicatie voor realtime monitoring van treinen in Nederland, inclusief NS, Arriva, R-net en de Valleilijn.
               </p>
             </div>
 
@@ -289,7 +289,10 @@ export default function SettingsPage() {
               <h3 className="text-sm font-semibold text-foreground mb-3">Gegevensbronnen & Attributies</h3>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>
-                  <strong>Nederlandse Spoorwegen (NS)</strong> — Reistijden, stations en routegegevens afkomstig uit NS-API en gerelateerde diensten.
+                  <strong>Nederlandse Spoorwegen (NS)</strong> — Reistijden, stations, GPS-posities en routegegevens afkomstig uit NS-API en Virtual Train API.
+                </p>
+                <p>
+                  <strong>OVAPI / NDOV</strong> — Realtime rij-informatie voor regionale operators zoals EBS (Valleilijn / R-net).
                 </p>
                 <p>
                   <strong>OpenStreetMap</strong> — Kaarten en geografische gegevens via OSM en aanverwante providers (CartoDB, Esri).
@@ -298,9 +301,13 @@ export default function SettingsPage() {
                   <strong>OpenRailwayMap</strong> — Spoorweginformatie zoals baanvakken en maximumsnelheden.
                 </p>
                 <p className="pt-2 italic text-xs">
-                  Treinradar is niet officieel verbonden aan of goedgekeurd door Nederlandse Spoorwegen. Alle data is publiek beschikbaar via openbare API's. Voor officiele tréininformatie, zie{' '}
+                  Treinradar is niet officieel verbonden aan of goedgekeurd door Nederlandse Spoorwegen of EBS. Alle data is publiek beschikbaar via openbare API's. Voor officiële trein­informatie, zie{' '}
                   <a href="https://www.ns.nl" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
                     ns.nl
+                  </a>
+                  {' '}of{' '}
+                  <a href="https://www.rnet.nl" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
+                    rnet.nl
                   </a>
                 </p>
               </div>

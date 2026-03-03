@@ -36,9 +36,23 @@ function normaliseType(raw?: string): string {
   if (!raw) return ''
   const u = raw.toUpperCase().trim()
   const MAP: Record<string, string> = {
+    // NS
     SPRINTER: 'SPR', INTERCITY: 'IC', 'INTERCITY DIRECT': 'ICD',
     'INTERCITY-DIRECT': 'ICD', INTERCITYEXPRESS: 'ICE', 'INTER CITY EXPRESS': 'ICE',
     THALYS: 'THA', EUROSTAR: 'EUR', INTERNATIONAL: 'INT', NACHTTREIN: 'NT',
+    // RNet / regionale operators
+    'R-NET': 'RNT', RNET: 'RNT', 'R NET': 'RNT',
+    VALLEILIJN: 'VLL', 'VALLEI LIJN': 'VLL',
+    // Arriva
+    ARRIVA: 'ARR', 'STOPTREIN': 'STP',
+    // Diverse andere
+    LIGHTRAIL: 'LR', 'LIGHT RAIL': 'LR',
+    FLIRT: 'FLI', FLIRT3: 'FLI',
+    GTW: 'GTW',
+    ICM: 'ICM',
+    SNG: 'SPR', // SNG is een Sprinter
+    // DB
+    'INTERCITY EXPRESS': 'ICE',
   }
   return MAP[u] ?? u.slice(0, 4) // cap at 4 chars for display
 }

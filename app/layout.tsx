@@ -9,8 +9,8 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 
 export const metadata: Metadata = {
   title: 'Treinradar Nederland | Realtime Treinposities & Vertragingen',
-  description: 'Treinradar, Realtime spoorwegnet Nederland met live treinposities, vertragingen, verstoringen en NS statistieken. Monitor alle treinen in Nederland op één kaart.',
-  keywords: ['treinen', 'NS', 'Nederlandse Spoorwegen', 'vertraging', 'realtime', 'spoorwegen', 'treinkaart', 'vervoer'],
+  description: 'Treinradar: realtime spoorwegnet Nederland met live treinposities, vertragingen, verstoringen en statistieken. Inclusief NS, Arriva, R-net en Valleilijn.',
+  keywords: ['treinen', 'NS', 'Nederlandse Spoorwegen', 'vertraging', 'realtime', 'spoorwegen', 'treinkaart', 'vervoer', 'Arriva', 'R-net', 'Valleilijn', 'EBS'],
   authors: [{ name: 'Arjan' }],
   creator: 'Arjan',
   metadataBase: new URL('https://radar.arjandenhartog.com'),

@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { ChevronRight, Loader2, MapPin, Clock, Zap, AlertCircle } from 'lucide-react'
 import { Header } from '@/components/header'
-import type { NSStation } from '@/lib/ns-api'
+import type { Station } from '@/lib/supabase'
 
 interface TripLeg {
   idx: string
@@ -47,7 +47,7 @@ function getDelayMinutes(planned?: string, actual?: string) {
 }
 
 export default function TravelPlannerPage() {
-  const [stations, setStations] = useState<NSStation[]>([])
+  const [stations, setStations] = useState<Station[]>([])
   const [fromStation, setFromStation] = useState('')
   const [toStation, setToStation] = useState('')
   const [dateTime, setDateTime] = useState(new Date().toISOString().slice(0, 16))
@@ -66,32 +66,40 @@ export default function TravelPlannerPage() {
   }, [])
 
   const fromStationObj = useMemo(
-    () => stations.find(s => s.code === fromStation),
+    () => stations.find(s => s.abbreviation === fromStation),
     [stations, fromStation]
   )
   const toStationObj = useMemo(
-    () => stations.find(s => s.code === toStation),
+    () => stations.find(s => s.abbreviation === toStation),
     [stations, toStation]
   )
 
   const filteredFromStations = useMemo(
-    () => stations.filter(s => 
-      s?.code?.toLowerCase().includes(fromStation.toLowerCase()) || 
-      s?.namen?.lang?.toLowerCase().includes(fromStation.toLowerCase())
-    ).slice(0, 8),
+    () => {
+      const q = fromStation.toLowerCase()
+      return stations.filter(s =>
+        s?.abbreviation?.toLowerCase().includes(q) ||
+        s?.name?.toLowerCase().includes(q) ||
+        s?.short_name?.toLowerCase().includes(q)
+      ).slice(0, 8)
+    },
     [stations, fromStation]
   )
   const filteredToStations = useMemo(
-    () => stations.filter(s => 
-      s?.code?.toLowerCase().includes(toStation.toLowerCase()) || 
-      s?.namen?.lang?.toLowerCase().includes(toStation.toLowerCase())
-    ).slice(0, 8),
+    () => {
+      const q = toStation.toLowerCase()
+      return stations.filter(s =>
+        s?.abbreviation?.toLowerCase().includes(q) ||
+        s?.name?.toLowerCase().includes(q) ||
+        s?.short_name?.toLowerCase().includes(q)
+      ).slice(0, 8)
+    },
     [stations, toStation]
   )
 
   const handleSearch = async () => {
-    if (!fromStation || !toStation) {
-      setError('Selecteer beide stations')
+    if (!fromStationObj || !toStationObj) {
+      setError('Selecteer beide stations uit de keuzelijst')
       return
     }
 
@@ -101,8 +109,8 @@ export default function TravelPlannerPage() {
 
     try {
       const params = new URLSearchParams({
-        fromStation,
-        toStation,
+        fromStation: fromStationObj!.abbreviation,
+        toStation: toStationObj!.abbreviation,
         dateTime,
         searchForArrival: searchForArrival.toString(),
       })
@@ -111,20 +119,17 @@ export default function TravelPlannerPage() {
       if (!response.ok) throw new Error('Zoeking mislukt')
 
       const data = await response.json()
-      console.log('Trip data:', data)
-      
-      // Handle both array and single object responses
-      let trips: Trip[] = []
+
+      // NS API v3/trips geeft een object met { trips: [...] }
+      let fetchedTrips: Trip[] = []
       if (Array.isArray(data)) {
-        // If it's an array of TravelAdvice objects
-        trips = data.flatMap(advice => advice.trips ?? [])
-      } else if (data.trips) {
-        // If it's a single TravelAdvice object
-        trips = data.trips
+        fetchedTrips = data.flatMap((advice: TravelAdvice) => advice.trips ?? [])
+      } else if (data.trips && Array.isArray(data.trips)) {
+        fetchedTrips = data.trips
       }
-      
-      setTrips(trips)
-      if (!trips.length) {
+
+      setTrips(fetchedTrips)
+      if (!fetchedTrips.length) {
         setError('Geen verbindingen gevonden voor deze zoekopdracht')
       }
     } catch (err) {
@@ -169,20 +174,21 @@ export default function TravelPlannerPage() {
               </label>
               <input
                 type="text"
-                placeholder="Voer stationsnaam in..."
-                value={fromStation}
-                onChange={e => setFromStation(e.target.value)}
+                placeholder="Zoek station (naam of code)..."
+                value={fromStationObj ? `${fromStationObj.name} (${fromStationObj.abbreviation})` : fromStation}
+                onChange={e => { setFromStation(e.target.value) }}
+                onFocus={e => { if (fromStationObj) { setFromStation(''); e.target.select() } }}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
-                  background: 'var(--muted)',
-                  border: '1px solid var(--border)',
+                  background: fromStationObj ? 'rgba(59,130,246,0.1)' : 'var(--muted)',
+                  border: fromStationObj ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--border)',
                   borderRadius: 6,
                   color: 'var(--foreground)',
                   fontSize: 14,
                 }}
               />
-              {fromStation && filteredFromStations.length > 0 && (
+              {fromStation && !fromStationObj && filteredFromStations.length > 0 && (
                 <div style={{
                   position: 'absolute',
                   top: '100%',
@@ -198,8 +204,8 @@ export default function TravelPlannerPage() {
                 }}>
                   {filteredFromStations.map(s => (
                     <button
-                      key={s.code}
-                      onClick={() => setFromStation(s.code)}
+                      key={s.abbreviation}
+                      onClick={() => setFromStation(s.abbreviation)}
                       style={{
                         display: 'block',
                         width: '100%',
@@ -215,7 +221,7 @@ export default function TravelPlannerPage() {
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--muted)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                      {s.namen.lang} <span style={{ color: 'var(--muted-foreground)' }}>({s.code})</span>
+                      {s.name} <span style={{ color: 'var(--muted-foreground)' }}>({s.abbreviation})</span>
                     </button>
                   ))}
                 </div>
@@ -231,14 +237,15 @@ export default function TravelPlannerPage() {
               <div style={{ position: 'relative' }}>
                 <input
                   type="text"
-                  placeholder="Voer stationsnaam in..."
-                  value={toStation}
-                  onChange={e => setToStation(e.target.value)}
+                  placeholder="Zoek station (naam of code)..."
+                  value={toStationObj ? `${toStationObj.name} (${toStationObj.abbreviation})` : toStation}
+                  onChange={e => { setToStation(e.target.value) }}
+                  onFocus={e => { if (toStationObj) { setToStation(''); e.target.select() } }}
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    background: 'var(--muted)',
-                    border: '1px solid var(--border)',
+                    background: toStationObj ? 'rgba(59,130,246,0.1)' : 'var(--muted)',
+                    border: toStationObj ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--border)',
                     borderRadius: 6,
                     color: 'var(--foreground)',
                     fontSize: 14,
@@ -264,7 +271,7 @@ export default function TravelPlannerPage() {
                   </button>
                 )}
               </div>
-              {toStation && filteredToStations.length > 0 && (
+              {toStation && !toStationObj && filteredToStations.length > 0 && (
                 <div style={{
                   position: 'absolute',
                   top: '100%',
@@ -280,8 +287,8 @@ export default function TravelPlannerPage() {
                 }}>
                   {filteredToStations.map(s => (
                     <button
-                      key={s.code}
-                      onClick={() => setToStation(s.code)}
+                      key={s.abbreviation}
+                      onClick={() => setToStation(s.abbreviation)}
                       style={{
                         display: 'block',
                         width: '100%',
@@ -297,7 +304,7 @@ export default function TravelPlannerPage() {
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--muted)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                      {s.namen.lang} <span style={{ color: 'var(--muted-foreground)' }}>({s.code})</span>
+                      {s.name} <span style={{ color: 'var(--muted-foreground)' }}>({s.abbreviation})</span>
                     </button>
                   ))}
                 </div>
@@ -343,17 +350,17 @@ export default function TravelPlannerPage() {
           {/* Search Button */}
           <button
             onClick={handleSearch}
-            disabled={loading || !fromStation || !toStation}
+            disabled={loading || !fromStationObj || !toStationObj}
             style={{
               width: '100%',
               padding: '12px 16px',
-              background: fromStation && toStation ? '#3b82f6' : '#6b7280',
+              background: fromStationObj && toStationObj ? '#3b82f6' : '#6b7280',
               color: '#fff',
               border: 'none',
               borderRadius: 6,
               fontSize: 14,
               fontWeight: 600,
-              cursor: fromStation && toStation ? 'pointer' : 'not-allowed',
+              cursor: fromStationObj && toStationObj ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
