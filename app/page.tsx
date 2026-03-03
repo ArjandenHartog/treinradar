@@ -1,7 +1,9 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Settings } from 'lucide-react'
 
 import { LiveClock } from '@/components/live-clock'
 import { StatCard } from '@/components/stat-card'
@@ -210,10 +212,27 @@ export default function Dashboard() {
                 {t === 'radar' ? 'Treinenradar' : t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
+            <Link
+              href="/radar"
+              className="rounded-md px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              Radar
+            </Link>
           </nav>
 
           {/* Right */}
           <div className="ml-auto flex items-center gap-3">
+            <Link
+              href="/settings"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+              title="Instellingen"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 1.143c.214.2.534.1.634-.18l.44-1.286c.151-.443.525-.768.97-.807l1.39-.153c.445-.049.85.195 1.002.587.049.195.078.39.078.581v2.195c0 .272-.047.54-.134.792l-.44 1.286c-.151.443-.525.768-.97.807l-1.39.153c-.445.049-.85-.195-1.002-.587a2.104 2.104 0 01-.078-.581v-.222c0-.834-.605-1.53-1.378-1.676l-1.217-.456a1.125 1.125 0 01-.634-1.111l-.213-1.281c-.09-.542-.56-.94-1.11-.94h-2.593c-.55 0-1.02.398-1.11.94l-.213 1.281c-.063.374-.313.686-.645.87a6.084 6.084 0 01-.22.127c-.325.196-.72.257-1.075.124l-1.217.456a1.125 1.125 0 01-1.37-.49l-1.296-1.143c-.214-.2-.534-.1-.634.18l-.44 1.286c-.151.443-.525.768-.97.807l-1.39.153c-.445.049-.85-.195-1.002-.587-.049-.195-.078-.39-.078-.581v-2.195c0-.272.047-.54.134-.792l.44-1.286c.151-.443.525-.768.97-.807l1.39-.153c.445-.049.85.195 1.002.587.049.195.078.39.078.581v.222c0 .834.605 1.53 1.378 1.676l1.217.456c.556.21.884.85.634 1.111l.213 1.281z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </Link>
+
             <button
               onClick={refreshAll}
               disabled={refreshing}

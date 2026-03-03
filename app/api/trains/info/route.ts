@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getJourneyPayload, getTrainInformationForRitnummer } from '@/lib/ns-api'
+import { getJourneyPayload } from '@/lib/ns-api'
 import { supabase } from '@/lib/supabase'
-import { getStockInfo, extractMaterialCode, extractNumberOfParts, FACILITY_LABEL, type Facility } from '@/lib/rolling-stock'
+import { getStockInfo, FACILITY_LABEL, type Facility } from '@/lib/rolling-stock'
 
 export interface StopInfo {
   name: string
@@ -15,6 +15,9 @@ export interface StopInfo {
   platform: string | null
   passed: boolean
   current: boolean
+  cancelled: boolean
+  crowdForecast: string | null
+  delaySeconds: number
 }
 
 export interface MaterialInfo {
@@ -29,6 +32,8 @@ export interface MaterialInfo {
   facilities: Facility[]
   facilityLabels: { icon: string; label: string }[]
   allowBikes: boolean
+  totalSeats: number | null
+  stockIdentifiers: string[]
 }
 
 export interface TrainDetail {
@@ -39,10 +44,27 @@ export interface TrainDetail {
   crowdForecast: string | null
 }
 
-// ─── Per-process cache (5 min TTL — material rarely changes mid-journey) ──────
+// ─── Per-process cache (5 min TTL) ───────────────────────────────────────────
 
 const infoCache = new Map<string, { data: TrainDetail; ts: number }>()
 const CACHE_TTL = 5 * 60_000
+
+// ─── Facility mapping ─────────────────────────────────────────────────────────
+
+function mapFacilities(raw: string[]): Facility[] {
+  return raw.map(f => {
+    const u = f.toUpperCase()
+    if (u === 'WIFI')        return 'wifi'
+    if (u === 'FIETS')       return 'fiets'
+    if (u === 'STROOM')      return 'stopcontact'
+    if (u === 'TOILET')      return 'toilet'
+    if (u === 'TOEGANKELIJK') return 'toegankelijk'
+    if (u === 'RESTAURANT' || u === 'BISTRO') return 'restaurant'
+    if (u === 'STILLE_COUPE' || u.includes('STILT')) return 'stille-coupe'
+    if (u === 'AIRCO')       return 'airco'
+    return null
+  }).filter((f): f is Facility => f !== null)
+}
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 
@@ -55,7 +77,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(hit.data)
   }
 
-  const now  = new Date()
+  const now   = new Date()
   const today = now.toISOString().slice(0, 10)
 
   // Load station coords for fallback
@@ -66,117 +88,120 @@ export async function GET(req: NextRequest) {
   const byUic  = new Map(stations?.map(s => [s.uic_code, s]) ?? [])
   const byName = new Map(stations?.map(s => [s.name.toLowerCase(), s]) ?? [])
 
-  function resolveCoords(stop: { uicCode?: string; stop?: { uicCode?: string; name?: string; lat?: number; lng?: number } }) {
-    if (stop.stop?.lat && stop.stop?.lng) return { lat: stop.stop.lat, lng: stop.stop.lng }
-    const uic = stop.stop?.uicCode ?? stop.uicCode
-    if (uic) { const s = byUic.get(uic); if (s?.lat) return { lat: s.lat, lng: s.lng } }
-    const name = stop.stop?.name
-    if (name) { const s = byName.get(name.toLowerCase()); if (s?.lat) return { lat: s.lat, lng: s.lng } }
+  function resolveCoords(stop: { uicCode?: string; name?: string; lat?: number; lng?: number }) {
+    if (stop.lat && stop.lng) return { lat: stop.lat, lng: stop.lng }
+    if (stop.uicCode) {
+      const s = byUic.get(stop.uicCode)
+      if (s?.lat) return { lat: s.lat, lng: s.lng }
+    }
+    if (stop.name) {
+      const s = byName.get(stop.name.toLowerCase())
+      if (s?.lat) return { lat: s.lat, lng: s.lng }
+    }
     return null
   }
 
-  // ── Fetch journey + material in parallel ──────────────────────────────────
-  const [journeyPayload, trainInfo] = await Promise.all([
-    getJourneyPayload(ritnummer, today),
-    getTrainInformationForRitnummer(ritnummer),
-  ])
+  // ── Fetch journey payload ─────────────────────────────────────────────────
+  const journeyPayload = await getJourneyPayload(ritnummer, today)
 
   // ── Build stop list ───────────────────────────────────────────────────────
   const stops: StopInfo[] = journeyPayload.stops.map(s => {
-    const coords  = resolveCoords(s)
-    const depTime = s.actualDepartureDateTime ?? s.plannedDepartureDateTime
+    const dep    = s.departures?.[0]
+    const arr    = s.arrivals?.[0]
+    const coords = resolveCoords({ ...s.stop })
+
+    const plannedDep = dep?.plannedTime ?? null
+    const actualDep  = dep?.actualTime  ?? null
+    const plannedArr = arr?.plannedTime ?? null
+    const actualArr  = arr?.actualTime  ?? null
+
+    // A stop is "passed" if actual departure/arrival time is in the past
+    const passTime = actualDep ?? plannedDep ?? actualArr ?? plannedArr
+    const passed   = passTime ? new Date(passTime) < now : false
+
     return {
       name:             s.stop?.name ?? '',
       uicCode:          s.stop?.uicCode ?? '',
       lat:              coords?.lat ?? null,
       lng:              coords?.lng ?? null,
-      plannedDeparture: s.plannedDepartureDateTime ?? null,
-      actualDeparture:  s.actualDepartureDateTime  ?? null,
-      plannedArrival:   s.plannedArrivalDateTime   ?? null,
-      actualArrival:    s.actualArrivalDateTime    ?? null,
-      platform:         s.actualDepartureTrack ?? s.plannedDepartureTrack ?? null,
-      passed:           depTime ? new Date(depTime) < now : false,
-      current:          false, // determined client-side via GPS position
+      plannedDeparture: plannedDep,
+      actualDeparture:  actualDep,
+      plannedArrival:   plannedArr,
+      actualArrival:    actualArr,
+      platform:         dep?.actualTrack ?? dep?.plannedTrack ?? arr?.actualTrack ?? arr?.plannedTrack ?? null,
+      passed,
+      current:          false,
+      cancelled:        dep?.cancelled ?? arr?.cancelled ?? false,
+      crowdForecast:    dep?.crowdForecast ?? arr?.crowdForecast ?? null,
+      delaySeconds:     dep?.delayInSeconds ?? arr?.delayInSeconds ?? 0,
     }
   })
 
-  // ── Build material info ───────────────────────────────────────────────────
+  // ── Extract material from actualStock (first stop that has it) ────────────
+  const stockStop  = journeyPayload.stops.find(s => s.actualStock?.trainParts?.length)
+  const stockData  = stockStop?.actualStock
+  const firstPart  = stockData?.trainParts?.[0]
+
+  const imageUri   = firstPart?.image?.uri ?? null
+  const rawFac     = firstPart?.facilities ?? []
+  const facilities = mapFacilities(rawFac)
+  const numParts   = stockData?.numberOfParts ?? null
+  const totalSeats = stockData?.numberOfSeats ?? null
+  const trainType  = stockData?.trainType ?? null
+  const stockIds   = stockData?.trainParts?.map(p => p.stockIdentifier ?? '').filter(Boolean) ?? []
+
   let material: MaterialInfo | null = null
 
-  // Priority 1: trainInformation endpoint (most accurate)
-  const parts = trainInfo?.materieelDelen ?? trainInfo?.trainParts
-  if (parts?.length) {
-    const firstPart = parts[0]
-    const code = firstPart.type
-    if (code) {
-      const stockResult = getStockInfo(code, parts.length)
-      if (stockResult) {
-        // Merge static DB with live API data (live wins for seats/length)
-        const liveFacilities: Facility[] = (firstPart.facilities ?? []).map(f => {
-          const lower = f.toLowerCase().replace(/[^a-z]/g, '-')
-          if (lower.includes('wifi'))   return 'wifi'
-          if (lower.includes('stilt'))  return 'stille-coupe'
-          if (lower.includes('fiets'))  return 'fiets'
-          if (lower.includes('toeg') || lower.includes('access')) return 'toegankelijk'
-          if (lower.includes('rest') || lower.includes('buffet')) return 'restaurant'
-          if (lower.includes('stop') || lower.includes('socket')) return 'stopcontact'
-          if (lower.includes('toilet')) return 'toilet'
-          if (lower.includes('airco'))  return 'airco'
-          return null
-        }).filter((f): f is Facility => f !== null)
-
-        const facilities = liveFacilities.length > 0 ? liveFacilities : stockResult.spec.facilities
-
-        material = {
-          code:           stockResult.spec.code,
-          fullName:       stockResult.spec.fullName,
-          image:          stockResult.image,
-          numberOfParts:  parts.length,
-          lengthM:        firstPart.lengteInMeters
-            ? firstPart.lengteInMeters * parts.length
-            : stockResult.lengthM,
-          seats1st:       parts.reduce((s, p) => s + (p.zitplaatsen?.zitplaatsEersteKlas ?? stockResult.seats.first), 0),
-          seats2nd:       parts.reduce((s, p) => s + (p.zitplaatsen?.zitplaatsTweedeKlas ?? stockResult.seats.second), 0),
-          topSpeedKmh:    stockResult.spec.topSpeedKmh,
-          facilities,
-          facilityLabels: facilities.map(f => FACILITY_LABEL[f]),
-          allowBikes:     facilities.includes('fiets') || (journeyPayload.allowCyclesOnboard ?? false),
-        }
+  if (trainType) {
+    const stockResult = getStockInfo(trainType, numParts ?? 1)
+    if (stockResult) {
+      const mergedFac = facilities.length > 0 ? facilities : stockResult.spec.facilities
+      material = {
+        code:          stockResult.spec.code,
+        fullName:      stockResult.spec.fullName,
+        image:         imageUri ?? stockResult.image,        // live URL takes priority
+        numberOfParts: numParts ?? null,
+        lengthM:       stockResult.lengthM,
+        seats1st:      stockResult.seats.first,
+        seats2nd:      stockResult.seats.second,
+        topSpeedKmh:   stockResult.spec.topSpeedKmh,
+        facilities:    mergedFac,
+        facilityLabels: mergedFac.map(f => FACILITY_LABEL[f]),
+        allowBikes:    mergedFac.includes('fiets'),
+        totalSeats,
+        stockIdentifiers: stockIds,
+      }
+    } else if (imageUri) {
+      // We have an image but no static DB entry — build minimal material
+      material = {
+        code:          trainType,
+        fullName:      trainType,
+        image:         imageUri,
+        numberOfParts: numParts,
+        lengthM:       null,
+        seats1st:      null,
+        seats2nd:      totalSeats,
+        topSpeedKmh:   null,
+        facilities,
+        facilityLabels: facilities.map(f => FACILITY_LABEL[f]),
+        allowBikes:    facilities.includes('fiets'),
+        totalSeats,
+        stockIdentifiers: stockIds,
       }
     }
   }
 
-  // Priority 2: journey payload meta (fallback)
-  if (!material) {
-    const matCode  = extractMaterialCode(journeyPayload as Record<string, unknown>)
-    const numParts = extractNumberOfParts(journeyPayload as Record<string, unknown>)
-    if (matCode) {
-      const stockResult = getStockInfo(matCode, numParts)
-      if (stockResult) {
-        const facilities = stockResult.spec.facilities
-        material = {
-          code:           stockResult.spec.code,
-          fullName:       stockResult.spec.fullName,
-          image:          stockResult.image,
-          numberOfParts:  numParts ?? null,
-          lengthM:        stockResult.lengthM,
-          seats1st:       stockResult.seats.first,
-          seats2nd:       stockResult.seats.second,
-          topSpeedKmh:    stockResult.spec.topSpeedKmh,
-          facilities,
-          facilityLabels: facilities.map(f => FACILITY_LABEL[f]),
-          allowBikes:     facilities.includes('fiets') || (journeyPayload.allowCyclesOnboard ?? false),
-        }
-      }
-    }
-  }
+  // Crowd forecast from first departure
+  const crowdForecast = journeyPayload.stops[0]?.departures?.[0]?.crowdForecast
+    ?? journeyPayload.stops[0]?.arrivals?.[0]?.crowdForecast
+    ?? null
 
   const detail: TrainDetail = {
     serviceNumber:  ritnummer,
     material,
     stops,
-    allowBikes:     journeyPayload.allowCyclesOnboard ?? false,
-    crowdForecast:  journeyPayload.crowdForecast ?? null,
+    allowBikes:     facilities.includes('fiets'),
+    crowdForecast,
   }
 
   infoCache.set(ritnummer, { data: detail, ts: Date.now() })

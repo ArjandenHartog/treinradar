@@ -135,20 +135,30 @@ export async function getDisruptions(): Promise<NSDisruption[]> {
 
 // ─── Journey ─────────────────────────────────────────────────────────────────
 
+export interface NSJourneyStopEvent {
+  plannedTime?: string
+  actualTime?: string
+  delayInSeconds?: number
+  plannedTrack?: string
+  actualTrack?: string
+  cancelled?: boolean
+  crowdForecast?: string
+}
+
+export interface NSJourneyStopStock {
+  trainType?: string
+  numberOfSeats?: number
+  numberOfParts?: number
+  trainParts?: Array<{
+    stockIdentifier?: string
+    facilities?: string[]
+    image?: { uri?: string }
+  }>
+}
+
 export interface NSJourneyStop {
   id?: string
-  uicCode?: string
-  plannedDepartureDateTime?: string
-  actualDepartureDateTime?: string
-  plannedArrivalDateTime?: string
-  actualArrivalDateTime?: string
-  plannedDepartureTrack?: string
-  actualDepartureTrack?: string
-  plannedArrivalTrack?: string
-  actualArrivalTrack?: string
-  status?: string
-  departureCancelled?: boolean
-  arrivalCancelled?: boolean
+  status?: string       // 'ORIGIN' | 'STOP' | 'DESTINATION' | 'PASSING'
   stop: {
     uicCode: string
     name: string
@@ -156,6 +166,10 @@ export interface NSJourneyStop {
     lng?: number
     countryCode?: string
   }
+  departures: NSJourneyStopEvent[]
+  arrivals: NSJourneyStopEvent[]
+  actualStock?: NSJourneyStopStock
+  plannedStock?: NSJourneyStopStock
 }
 
 // Full journey payload – includes stops AND material/stock metadata
