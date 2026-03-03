@@ -271,6 +271,50 @@ export default function SettingsPage() {
 
         </div>
       </main>
+
+      {/* FOOTER / ATTRIBUTION */}
+      <footer className="border-t border-border bg-muted/30 mt-16 py-8">
+        <div className="mx-auto max-w-4xl px-4">
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-2">Over Treinradar</h3>
+              <p className="text-sm text-muted-foreground max-w-prose">
+                Treinradar is een onafhankelijke, open-source applicatie voor realtime monitoring van treinen in Nederland.
+              </p>
+            </div>
+
+            <Separator className="opacity-20" />
+
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3">Gegevensbronnen & Attributies</h3>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  <strong>Nederlandse Spoorwegen (NS)</strong> — Reistijden, stations en routegegevens afkomstig uit NS-API en gerelateerde diensten.
+                </p>
+                <p>
+                  <strong>OpenStreetMap</strong> — Kaarten en geografische gegevens via OSM en aanverwante providers (CartoDB, Esri).
+                </p>
+                <p>
+                  <strong>OpenRailwayMap</strong> — Spoorweginformatie zoals baanvakken en maximumsnelheden.
+                </p>
+                <p className="pt-2 italic text-xs">
+                  Treinradar is niet officieel verbonden aan of goedgekeurd door Nederlandse Spoorwegen. Alle data is publiek beschikbaar via openbare API's. Voor officiele tréininformatie, zie{' '}
+                  <a href="https://www.ns.nl" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
+                    ns.nl
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            <Separator className="opacity-20" />
+
+            <div className="text-xs text-muted-foreground">
+              <p>© 2026 Treinradar. Gemaakt met ❤️ voor railfans en reizigers.</p>
+              <p className="mt-1">Data wordt in realtime bijgewerkt. Accuratesse kan variëren.</p>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

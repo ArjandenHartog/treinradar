@@ -171,6 +171,7 @@
 .leaflet-container {
   background: var(--background) !important;
   font-family: var(--font-geist-mono), monospace !important;
+  z-index: 0 !important;
 }
 .leaflet-popup-content-wrapper {
   background: var(--popover) !important;

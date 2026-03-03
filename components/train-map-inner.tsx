@@ -215,7 +215,7 @@ function TrainDetailPanel({ train, onClose, onStationClick }: {
   return (
     <div style={{
       position: 'absolute', right: 0, top: 0, bottom: 0,
-      width: 'clamp(300px, 28vw, 380px)',
+      width: 'clamp(280px, min(90vw, 28vw), 400px)',
       zIndex: 2000,
       background: 'var(--card)',
       borderLeft: '1px solid var(--border)',

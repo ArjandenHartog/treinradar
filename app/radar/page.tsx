@@ -33,21 +33,21 @@ function OverlayCard({ trains, stats, disruptions, lastUpdate, refreshing, onRef
   const activeDisruptions = disruptions.filter(d => d.type !== 'MAINTENANCE')
 
   return (
-    <div className="pointer-events-auto flex items-center gap-3 rounded-xl border border-white/[0.08] bg-zinc-950/90 px-3 py-2 shadow-2xl backdrop-blur-md"
-      style={{ minWidth: 520 }}>
+    <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl border border-white/[0.08] bg-zinc-950/90 px-2.5 sm:px-3 py-1.5 sm:py-2 shadow-2xl backdrop-blur-md max-w-4xl">
+    
 
       {/* Brand */}
-      <div className="flex shrink-0 items-center gap-1.5">
-        <svg className="h-3.5 w-3.5 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+      <div className="hidden sm:flex shrink-0 items-center gap-1.5">
+        <svg className="h-3 w-3 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
           <path d="M4 15.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V5c0-3.5-3.58-4-8-4s-8 .5-8 4v10.5zm8 1.5c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm6-7H6V5h12v5z"/>
         </svg>
-        <span className="text-[11px] font-semibold tracking-wide text-white">Treinradar</span>
+        <span className="text-[10px] font-semibold tracking-wide text-white">Treinradar</span>
       </div>
 
-      <div className="h-5 w-px shrink-0 bg-white/[0.08]" />
+      <div className="hidden sm:block h-4 w-px shrink-0 bg-white/[0.08]" />
 
       {/* Stats */}
-      <div className="flex gap-1">
+      <div className="flex flex-wrap gap-1.5 sm:gap-1 justify-center sm:justify-start">
         <Metric label="Treinen" value={active.length} color="blue" />
         <Metric label="Punctualiteit"
           value={stats ? `${stats.punctuality.toFixed(0)}%` : '—'}
@@ -58,33 +58,33 @@ function OverlayCard({ trains, stats, disruptions, lastUpdate, refreshing, onRef
           color={activeDisruptions.length > 0 ? 'red' : 'green'} />
       </div>
 
-      <div className="h-5 w-px shrink-0 bg-white/[0.08]" />
+      <div className="hidden sm:block h-4 w-px shrink-0 bg-white/[0.08]" />
 
       {/* Live + refresh */}
-      <div className="flex shrink-0 items-center gap-2">
-        <div className="flex items-center gap-1.5">
-          <span className="live-dot h-1.5 w-1.5 rounded-full bg-green-500" />
-          <span className="font-mono text-[9px] font-semibold uppercase tracking-widest text-green-500">Live</span>
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1">
+          <span className="live-dot h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-green-500" />
+          <span className="hidden sm:inline font-mono text-[9px] font-semibold uppercase tracking-widest text-green-500">Live</span>
         </div>
         <button onClick={onRefresh} disabled={refreshing}
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-zinc-600 hover:text-zinc-300 transition-colors"
+          className="flex items-center gap-0.5 sm:gap-1 rounded px-1 sm:px-1.5 py-0.5 text-zinc-600 hover:text-zinc-300 transition-colors"
           title="Vernieuwen">
-          <svg className={cn('h-3 w-3', refreshing && 'animate-spin')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className={cn('h-2.5 w-2.5 sm:h-3 sm:w-3', refreshing && 'animate-spin')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
           </svg>
           {lastUpdate && (
-            <span className="font-mono text-[8px] text-zinc-700">
+            <span className="hidden sm:inline font-mono text-[8px] text-zinc-700">
               {lastUpdate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
           )}
         </button>
       </div>
 
-      {/* Active disruptions (compact inline) */}
+      {/* Active disruptions (compact inline, hidden on mobile) */}
       {activeDisruptions.length > 0 && (
         <>
-          <div className="h-5 w-px shrink-0 bg-white/[0.08]" />
-          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+          <div className="hidden sm:block h-4 w-px shrink-0 bg-white/[0.08]" />
+          <div className="hidden sm:flex min-w-0 items-center gap-1.5 overflow-hidden">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
             <p className="truncate text-[9px] text-zinc-400">
               {activeDisruptions[0].title}
@@ -96,28 +96,26 @@ function OverlayCard({ trains, stats, disruptions, lastUpdate, refreshing, onRef
         </>
       )}
 
-      <div className="ml-auto h-5 w-px shrink-0 bg-white/[0.08]" />
-
-      {/* Back link */}
+      {/* Back link - on mobile take full width bottom row */}
       <Link href="/"
-        className="shrink-0 rounded px-2 py-0.5 text-[9px] uppercase tracking-wider text-zinc-600 hover:text-zinc-300 transition-colors">
+        className="rounded px-2 py-0.5 text-[8px] sm:text-[9px] uppercase tracking-wider text-zinc-600 hover:text-zinc-300 transition-colors ml-auto">
         ← terug
       </Link>
     </div>
   )
 }
 
-function Metric({ label, value, color }: { label: string; value: string | number; color: string }) {
+function Metric({ label, value, color, hideLabel }: { label: string; value: string | number; color: string; hideLabel?: boolean }) {
   const colorMap: Record<string, string> = {
     blue: 'text-blue-400', green: 'text-green-400', amber: 'text-amber-400',
     red: 'text-red-400', zinc: 'text-zinc-400',
   }
   return (
-    <div className="rounded-md bg-white/[0.03] px-2.5 py-1 text-center">
-      <div className={cn('font-mono text-sm font-bold tabular-nums leading-none', colorMap[color] ?? 'text-zinc-400')}>
+    <div className="rounded-md bg-white/[0.03] px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-center">
+      <div className={cn('font-mono text-xs sm:text-sm font-bold tabular-nums leading-none', colorMap[color] ?? 'text-zinc-400')}>
         {value}
       </div>
-      <div className="mt-0.5 text-[8px] uppercase tracking-wider text-zinc-600">{label}</div>
+      {!hideLabel && <div className="mt-0.5 text-[7px] sm:text-[8px] uppercase tracking-wider text-zinc-600">{label}</div>}
     </div>
   )
 }
@@ -126,15 +124,15 @@ function Metric({ label, value, color }: { label: string; value: string | number
 
 function Legend() {
   return (
-    <div className="pointer-events-none flex items-center gap-2 sm:gap-3 rounded-lg border border-white/[0.06] bg-zinc-950/85 px-2 sm:px-3 py-2 text-[9px] sm:text-[10px] font-mono backdrop-blur-sm">
-      <span className="uppercase tracking-wider text-zinc-600">Status</span>
+    <div className="pointer-events-none flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 sm:gap-3 rounded-lg sm:rounded-lg border border-white/[0.06] bg-zinc-950/85 px-2 sm:px-3 py-1.5 sm:py-2 text-[8px] sm:text-[9px] sm:text-[10px] font-mono backdrop-blur-sm">
+      <span className="uppercase tracking-wider text-zinc-600 w-full sm:w-auto text-center sm:text-left">Status</span>
       {[
         { color: '#22c55e', label: 'Op tijd' },
         { color: '#f59e0b', label: 'Vertraagd' },
         { color: '#ef4444', label: 'Geannuleerd' },
       ].map(({ color, label }) => (
         <div key={label} className="flex items-center gap-1 sm:gap-1.5">
-          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
           <span className="text-zinc-400">{label}</span>
         </div>
       ))}
@@ -225,7 +223,7 @@ export default function RadarPage() {
       <Header />
 
       {/* Map container */}
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative z-0 flex-1 overflow-hidden">
         {/* Full-screen map */}
         <div className="absolute inset-0">
           <TrainMap stations={stations} trains={trains} />
@@ -246,7 +244,7 @@ export default function RadarPage() {
           </div>
 
           {/* Bottom-left: legend */}
-          <div className="flex items-end gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-2 sm:gap-3 w-full sm:w-auto">
             <Legend />
           </div>
         </div>
