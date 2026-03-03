@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   MapContainer, TileLayer, Marker, Polyline,
-  CircleMarker, LayersControl,
+  CircleMarker, LayersControl, Tooltip,
 } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -712,13 +712,61 @@ function AnimatedTrainMarker({
     }
   }, [train.lat, train.lng])
 
+  const bg = typeColor(train.typeCode)
+  const dColor = delayColor(train.delay, train.cancelled)
+
   return (
     <Marker
       position={[animPos.lat, animPos.lng]}
       icon={makeTrainIcon(train.typeCode, train.delay, train.cancelled, selected)}
       zIndexOffset={selected ? 2000 : train.delay > 0 ? 100 : 0}
       eventHandlers={{ click: (e) => onSelect(e.originalEvent) }}
-    />
+    >
+      <Tooltip
+        direction="top"
+        offset={[0, -12]}
+        opacity={1}
+        permanent={selected}
+        className="train-preview-tooltip"
+        sticky={true}
+      >
+        <div style={{
+          fontSize: 10,
+          fontFamily: "'Courier New',monospace",
+          whiteSpace: 'nowrap',
+          padding: '4px 6px',
+          minWidth: 140,
+        }}>
+          <div style={{ fontWeight: 800, color: bg, fontSize: 11, marginBottom: 2 }}>
+            {train.typeCode} {train.serviceNumber}
+          </div>
+          <div style={{ fontSize: 9, color: 'var(--foreground)', marginBottom: 2 }}>
+            {train.operator}
+          </div>
+          <div style={{ 
+            fontSize: 9, 
+            color: train.cancelled ? '#ef4444' : train.delay >= 3 ? '#f59e0b' : '#22c55e',
+            fontWeight: 700,
+            marginBottom: 2,
+          }}>
+            {train.cancelled ? 'Uitval' : train.delay <= 0 ? 'Op tijd' : `+${train.delay}min`}
+          </div>
+          <div style={{ fontSize: 9, color: 'var(--muted-foreground)' }}>
+            {train.speedKmh}km/u
+          </div>
+          {train.destination && (
+            <div style={{ fontSize: 9, color: 'var(--muted-foreground)', marginTop: 2, borderTop: '1px solid var(--border)', paddingTop: 2 }}>
+              → {train.destination}
+            </div>
+          )}
+          {train.platform && (
+            <div style={{ fontSize: 8, color: 'var(--muted-foreground)' }}>
+              Perron {train.platform}
+            </div>
+          )}
+        </div>
+      </Tooltip>
+    </Marker>
   )
 }
 
@@ -731,8 +779,6 @@ interface Props {
 
 export default function TrainMapInner({ stations, trains }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [previewId, setPreviewId] = useState<string | null>(null)
-  const [popoverPos, setPopoverPos] = useState<PopoverPosition | null>(null)
   const mapRef = useRef<L.Map | null>(null)
 
   const selected = useMemo(
@@ -740,16 +786,8 @@ export default function TrainMapInner({ stations, trains }: Props) {
     [trains, selectedId]
   )
 
-  const preview = useMemo(
-    () => trains.find(t => t.id === previewId) ?? null,
-    [trains, previewId]
-  )
-
-  const handleMarkerClick = (trainId: string, e: any) => {
-    // Get the popover position from the event
-    const pos = { x: e.clientX, y: e.clientY }
-    setPreviewId(id => id === trainId ? null : trainId)
-    setPopoverPos(pos)
+  const handleMarkerClick = (trainId: string, _e: any) => {
+    setSelectedId(id => id === trainId ? null : trainId)
   }
 
   const flyToStation = useCallback((lat: number, lng: number, _name: string) => {
@@ -850,19 +888,6 @@ export default function TrainMapInner({ stations, trains }: Props) {
           />
         )}
       </MapContainer>
-
-      {/* Quick Preview Popover */}
-      {preview && popoverPos && (
-        <QuickPreviewPopover
-          train={preview}
-          position={popoverPos}
-          onClose={() => setPreviewId(null)}
-          onViewDetails={() => {
-            setSelectedId(preview.id)
-            setPreviewId(null)
-          }}
-        />
-      )}
 
       {/* Detail panel — outside Leaflet, overlays on right */}
       {selected && (
