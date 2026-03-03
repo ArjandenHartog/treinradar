@@ -39,11 +39,15 @@ const MAJOR_STATIONS = [
   'APD',  // Apeldoorn
   'SHL',  // Schiphol Airport
   'ZL',   // Zoetermeer (? / Den Haag regio)
-  // Valleilijn stations (EBS/R-net)
-  'ED',   // Ede-Wageningen
-  'BRNV', // Barneveld Noord
-  'BRNC', // Barneveld Centrum
-  'AMI',  // Amersfoort Schothorst
+  // Valleilijn stations (EBS/R-net) — codes geverifieerd via NS stations API
+  'ED',   // Ede-Wageningen (hoofdspoor, ook Valleilijn eindpunt)
+  'EDC',  // Ede Centrum (Valleilijn specifiek)
+  'BNN',  // Barneveld Noord
+  'BNC',  // Barneveld Centrum
+  'BNZ',  // Barneveld Zuid
+  'AMFS', // Amersfoort Schothorst
+  'AVAT', // Amersfoort Vathorst
+  'LTN',  // Lunteren
   // Arriva Friesland/Groningen
   'HDN',  // Hoorn
   'KAM',  // Kampen
