@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Header } from '@/components/header'
 import { supabase, type Station } from '@/lib/supabase'
 import type { PositionedTrain } from '@/app/api/trains/positions/route'
 import type { TrainStats } from '@/app/api/stats/route'
@@ -219,31 +220,35 @@ export default function RadarPage() {
   }, [readDisruptionsFromDb])
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-zinc-950">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950">
+      {/* Header */}
+      <Header />
 
-      {/* Full-screen map */}
-      <div className="absolute inset-0">
-        <TrainMap stations={stations} trains={trains} />
-      </div>
-
-      {/* Overlays */}
-      <div className="pointer-events-none absolute inset-0 z-[1000] flex flex-col justify-between p-2 sm:p-4">
-
-        {/* Top-center: info card */}
-        <div className="flex justify-center">
-          <OverlayCard
-            trains={trains}
-            stats={stats}
-            disruptions={disruptions}
-            lastUpdate={lastUpdate}
-            refreshing={refreshing}
-            onRefresh={refreshAll}
-          />
+      {/* Map container */}
+      <div className="relative flex-1 overflow-hidden">
+        {/* Full-screen map */}
+        <div className="absolute inset-0">
+          <TrainMap stations={stations} trains={trains} />
         </div>
 
-        {/* Bottom-left: legend */}
-        <div className="flex items-end gap-2 sm:gap-3">
-          <Legend />
+        {/* Overlays */}
+        <div className="pointer-events-none absolute inset-0 z-[1000] flex flex-col justify-between p-2 sm:p-4">
+          {/* Top-center: info card */}
+          <div className="flex justify-center">
+            <OverlayCard
+              trains={trains}
+              stats={stats}
+              disruptions={disruptions}
+              lastUpdate={lastUpdate}
+              refreshing={refreshing}
+              onRefresh={refreshAll}
+            />
+          </div>
+
+          {/* Bottom-left: legend */}
+          <div className="flex items-end gap-2 sm:gap-3">
+            <Legend />
+          </div>
         </div>
       </div>
     </div>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   MapContainer, TileLayer, Marker, Polyline,
-  CircleMarker, LayersControl, ZoomControl,
+  CircleMarker, LayersControl,
 } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -27,22 +27,6 @@ const FACILITY_ICON: Record<string, React.ComponentType<any>> = {
   restaurant:     Utensils,
   'stille-coupe': VolumeX,
   airco:          Wind,
-}
-
-// ─── Wikipedia links per materieeltype ───────────────────────────────────────
-
-const WIKI_URLS: Record<string, string> = {
-  ICM:   'https://nl.wikipedia.org/wiki/NS_ICM',
-  VIRM:  'https://nl.wikipedia.org/wiki/NS_VIRM',
-  SNG:   'https://nl.wikipedia.org/wiki/NS_Sprinter_Nieuwe_Generatie',
-  SLT:   'https://nl.wikipedia.org/wiki/NS_SLT',
-  DDZ:   'https://nl.wikipedia.org/wiki/NS_DDZ',
-  ICNG:  'https://nl.wikipedia.org/wiki/NS_Intercity_New_Generation',
-  ICN:   'https://nl.wikipedia.org/wiki/NS_Intercity_New_Generation',
-  VIRMM: 'https://nl.wikipedia.org/wiki/NS_VIRM',
-  ICE:   'https://nl.wikipedia.org/wiki/ICE_(trein)',
-  THAL:  'https://nl.wikipedia.org/wiki/Thalys',
-  EUR:   'https://nl.wikipedia.org/wiki/Eurostar',
 }
 
 // ─── Type → accent color ──────────────────────────────────────────────────────
@@ -136,10 +120,10 @@ function StopRow({ stop, onStationClick }: {
 
   const dotColor = isCancelled ? '#ef4444'
     : stop.current ? '#60a5fa'
-    : isPassed ? '#1e293b' : '#334155'
+    : isPassed ? '#64748b' : '#94a3b8'
   const nameColor = isCancelled ? '#ef4444'
     : stop.current ? '#f8fafc'
-    : isPassed ? '#334155' : '#94a3b8'
+    : isPassed ? '#cbd5e1' : '#e2e8f0'
 
   return (
     <div style={{
@@ -147,7 +131,7 @@ function StopRow({ stop, onStationClick }: {
       padding: '4px 0',
       borderLeft: stop.current ? '2px solid #3b82f6' : '2px solid transparent',
       paddingLeft: stop.current ? 8 : 10,
-      opacity: isCancelled ? 0.5 : 1,
+      opacity: isCancelled ? 0.6 : 1,
     }}>
       <span style={{
         width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
@@ -173,7 +157,7 @@ function StopRow({ stop, onStationClick }: {
           <span style={{ fontSize: 9, color: '#ef4444' }}>uitval</span>
         ) : planned ? (
           <>
-            <span style={{ fontSize: 11, color: late > 0 ? '#f59e0b' : isPassed ? '#334155' : '#64748b', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: 11, color: late > 0 ? '#f59e0b' : isPassed ? '#94a3b8' : '#cbd5e1', fontVariantNumeric: 'tabular-nums' }}>
               {late > 0 ? fmt(actual) : fmt(planned)}
             </span>
             {late > 0 && (
@@ -181,15 +165,15 @@ function StopRow({ stop, onStationClick }: {
             )}
           </>
         ) : (
-          <span style={{ fontSize: 11, color: '#1e293b' }}>–</span>
+          <span style={{ fontSize: 11, color: '#94a3b8' }}>–</span>
         )}
       </div>
       {stop.platform && !isCancelled && (
-        <span style={{ fontSize: 9, color: '#1e293b', flexShrink: 0 }}>sp.{stop.platform}</span>
+        <span style={{ fontSize: 9, color: '#cbd5e1', flexShrink: 0 }}>sp.{stop.platform}</span>
       )}
       {stop.crowdForecast && stop.crowdForecast !== 'UNKNOWN' && !isPassed && !isCancelled && (
         <span title={stop.crowdForecast}
-          style={{ fontSize: 8, color: CROWD_COLOR[stop.crowdForecast] ?? '#475569', letterSpacing: -1, flexShrink: 0 }}>
+          style={{ fontSize: 8, color: CROWD_COLOR[stop.crowdForecast] ?? '#94a3b8', letterSpacing: -1, flexShrink: 0 }}>
           {CROWD_ICON[stop.crowdForecast] ?? ''}
         </span>
       )}
@@ -409,15 +393,6 @@ function TrainDetailPanel({ train, onClose, onStationClick }: {
                 })}
               </div>
             )}
-
-            {(WIKI_URLS[mat.code.toUpperCase()] ?? WIKI_URLS[mat.code.replace(/\s.*/, '').toUpperCase()]) && (
-              <a
-                href={WIKI_URLS[mat.code.toUpperCase()] ?? WIKI_URLS[mat.code.replace(/\s.*/, '').toUpperCase()]}
-                target="_blank" rel="noopener noreferrer"
-                style={{ color: '#60a5fa', fontSize: 10, textDecoration: 'none' }}>
-                Wikipedia: {mat.code} →
-              </a>
-            )}
           </div>
         )}
 
@@ -425,10 +400,10 @@ function TrainDetailPanel({ train, onClose, onStationClick }: {
         {stops.length > 0 && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: '.1em' }}>
+              <div style={{ fontSize: 9, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 600 }}>
                 Route · {stops.length} stops
               </div>
-              <div style={{ fontSize: 9, color: '#334155' }}>{passedCount}/{stops.length - 1} gereden</div>
+              <div style={{ fontSize: 9, color: '#cbd5e1' }}>{passedCount}/{stops.length - 1} gereden</div>
             </div>
 
             {/* Progress bar */}
@@ -493,9 +468,8 @@ export default function TrainMapInner({ stations, trains }: Props) {
         ref={mapRef}
         center={[52.18, 5.38]} zoom={8} minZoom={7} maxZoom={16}
         style={{ height: '100%', width: '100%' }}
-        zoomControl={false}
+        zoomControl={true}
       >
-        <ZoomControl position="topleft" />
         <LayersControl position="topright">
 
           {/* ── Base layers ── */}

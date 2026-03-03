@@ -12,6 +12,15 @@ export async function GET() {
       type: d.type ?? '',
       is_active: d.isActive ?? true,
       impact: d.impact?.description ?? '',
+      topic: d.topic ?? '',
+      expectation: d.expectation?.description ?? '',
+      period: d.period ?? '',
+      additional_travel_time: d.summaryAdditionalTravelTime ? {
+        label: d.summaryAdditionalTravelTime.label,
+        shortLabel: d.summaryAdditionalTravelTime.shortLabel,
+        min: d.summaryAdditionalTravelTime.minimumDurationInMinutes,
+        max: d.summaryAdditionalTravelTime.maximumDurationInMinutes,
+      } : null,
       start_time: d.start ?? null,
       end_time: d.end ?? null,
       affected_stations: d.publicationSections?.flatMap(
