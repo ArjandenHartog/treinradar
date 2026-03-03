@@ -27,7 +27,7 @@ export type Facility =
 
 export const FACILITY_LABEL: Record<Facility, { icon: string; label: string }> = {
   wifi:         { icon: '📶', label: 'WiFi' },
-  'stille-coupe': { icon: '🔇', label: 'Stille coupé' },
+  'stille-coupe': { icon: '🔇', label: 'Stilte coupé' },
   fiets:        { icon: '🚲', label: 'Fiets toegestaan' },
   toegankelijk: { icon: '♿', label: 'Toegankelijk' },
   restaurant:   { icon: '🍽️', label: 'Restauratiewagen' },

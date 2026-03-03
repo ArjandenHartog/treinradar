@@ -187,14 +187,49 @@
 }
 .leaflet-control-zoom {
   border: 1px solid var(--border) !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  z-index: 9999 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+}
+/* Mobile: position zoom controls top-right to avoid overlay conflicts */
+@media (max-width: 640px) {
+  .leaflet-control-zoom {
+    margin-top: 10px !important;
+    margin-right: 10px !important;
+  }
+  .leaflet-control-container .leaflet-control-zoom {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    left: auto !important;
+  }
+  .leaflet-control-layers {
+    margin-top: 50px !important; /* Position below zoom controls */
+  }
 }
 .leaflet-control-zoom a {
   background: var(--card) !important;
   color: var(--card-foreground) !important;
   border-bottom: 1px solid var(--border) !important;
+  width: 26px !important;
+  height: 26px !important;
+  line-height: 26px !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  display: block !important;
 }
 .leaflet-control-zoom a:hover {
   background: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+.leaflet-control-zoom a:first-child {
+  border-bottom: 1px solid var(--border) !important;
+}
+.leaflet-control-zoom a:last-child {
+  border-bottom: none !important;
 }
 .leaflet-control-attribution {
   background: color-mix(in oklch, var(--background), transparent 20%) !important;

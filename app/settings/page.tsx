@@ -212,7 +212,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-medium text-white">Automatisch vernieuwen</div>
-                  <div className="text-sm text-zinc-500">Data elke 30-90 seconden verversen</div>
+                  <div className="text-sm text-zinc-500">Data elke 5-90 seconden verversen</div>
                 </div>
                 <button
                   onClick={() => setAutoRefresh(!autoRefresh)}

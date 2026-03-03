@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   MapContainer, TileLayer, Marker, Polyline,
-  CircleMarker, LayersControl,
+  CircleMarker, LayersControl, ZoomControl,
 } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -27,6 +27,22 @@ const FACILITY_ICON: Record<string, React.ComponentType<any>> = {
   restaurant:     Utensils,
   'stille-coupe': VolumeX,
   airco:          Wind,
+}
+
+// ─── Wikipedia links per materieeltype ───────────────────────────────────────
+
+const WIKI_URLS: Record<string, string> = {
+  ICM:   'https://nl.wikipedia.org/wiki/NS_ICM',
+  VIRM:  'https://nl.wikipedia.org/wiki/NS_VIRM',
+  SNG:   'https://nl.wikipedia.org/wiki/NS_Sprinter_Nieuwe_Generatie',
+  SLT:   'https://nl.wikipedia.org/wiki/NS_SLT',
+  DDZ:   'https://nl.wikipedia.org/wiki/NS_DDZ',
+  ICNG:  'https://nl.wikipedia.org/wiki/NS_Intercity_New_Generation',
+  ICN:   'https://nl.wikipedia.org/wiki/NS_Intercity_New_Generation',
+  VIRMM: 'https://nl.wikipedia.org/wiki/NS_VIRM',
+  ICE:   'https://nl.wikipedia.org/wiki/ICE_(trein)',
+  THAL:  'https://nl.wikipedia.org/wiki/Thalys',
+  EUR:   'https://nl.wikipedia.org/wiki/Eurostar',
 }
 
 // ─── Type → accent color ──────────────────────────────────────────────────────
@@ -108,7 +124,10 @@ const CROWD_ICON: Record<string, string> = {
   LOW: '●○○', MEDIUM: '●●○', HIGH: '●●●', UNKNOWN: '○○○',
 }
 
-function StopRow({ stop }: { stop: StopInfo }) {
+function StopRow({ stop, onStationClick }: {
+  stop: StopInfo
+  onStationClick?: (lat: number, lng: number, name: string) => void
+}) {
   const planned  = stop.plannedDeparture ?? stop.plannedArrival
   const actual   = stop.actualDeparture  ?? stop.actualArrival
   const late     = delayMin(planned, actual)
@@ -136,11 +155,17 @@ function StopRow({ stop }: { stop: StopInfo }) {
         outline: stop.current ? '2px solid #3b82f6' : 'none',
         outlineOffset: 2,
       }} />
-      <span style={{
-        flex: 1, fontSize: 11, color: nameColor,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        textDecoration: isCancelled ? 'line-through' : 'none',
-      }}>
+      <span
+        onClick={() => stop.lat && stop.lng && onStationClick?.(stop.lat, stop.lng, stop.name)}
+        style={{
+          flex: 1, fontSize: 11, color: nameColor,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          textDecoration: isCancelled ? 'line-through' : 'none',
+          cursor: (stop.lat && stop.lng && !isCancelled) ? 'pointer' : 'default',
+          borderRadius: 3,
+        }}
+        title={stop.lat && stop.lng ? `Zoom naar ${stop.name}` : undefined}
+      >
         {stop.name}
       </span>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -174,7 +199,11 @@ function StopRow({ stop }: { stop: StopInfo }) {
 
 // ─── Detail panel ─────────────────────────────────────────────────────────────
 
-function TrainDetailPanel({ train, onClose }: { train: PositionedTrain; onClose: () => void }) {
+function TrainDetailPanel({ train, onClose, onStationClick }: {
+  train: PositionedTrain
+  onClose: () => void
+  onStationClick: (lat: number, lng: number, name: string) => void
+}) {
   const [detail, setDetail] = useState<TrainDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -274,6 +303,29 @@ function TrainDetailPanel({ train, onClose }: { train: PositionedTrain; onClose:
           </span>
         </div>
 
+        {/* Speed Display */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--accent)', borderRadius: 12,
+          padding: '16px', marginBottom: 14,
+          border: '2px solid var(--ring)',
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 14, color: 'var(--muted-foreground)', marginBottom: 4, fontWeight: 500 }}>
+              Snelheid
+            </div>
+            <div style={{
+              fontSize: 32, fontWeight: 800, color: 'var(--foreground)',
+              fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em'
+            }}>
+              {train.speedKmh}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted-foreground)', fontWeight: 500 }}>
+              km/u
+            </div>
+          </div>
+        </div>
+
         {/* Info grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', marginBottom: 14 }}>
           {[
@@ -282,27 +334,27 @@ function TrainDetailPanel({ train, onClose }: { train: PositionedTrain; onClose:
             { label: 'Spoor',      value: train.platform || '–' },
             { label: 'Snelheid',   value: `${train.speedKmh} km/u` },
           ].map(({ label, value }) => (
-            <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '7px 10px' }}>
-              <div style={{ fontSize: 8, color: '#334155', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 2 }}>{label}</div>
-              <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 600 }}>{value}</div>
+            <div key={label} style={{ background: 'var(--muted)', borderRadius: 6, padding: '7px 10px' }}>
+              <div style={{ fontSize: 8, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 2 }}>{label}</div>
+              <div style={{ fontSize: 12, color: 'var(--foreground)', fontWeight: 600 }}>{value}</div>
             </div>
           ))}
         </div>
 
         {/* Via */}
         {train.via && (
-          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '7px 10px', marginBottom: 14 }}>
-            <div style={{ fontSize: 8, color: '#334155', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 2 }}>Via</div>
-            <div style={{ fontSize: 11, color: '#94a3b8' }}>{train.via}</div>
+          <div style={{ background: 'var(--muted)', borderRadius: 6, padding: '7px 10px', marginBottom: 14 }}>
+            <div style={{ fontSize: 8, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 2 }}>Via</div>
+            <div style={{ fontSize: 11, color: 'var(--foreground)' }}>{train.via}</div>
           </div>
         )}
 
         {/* Material */}
         {loading && !mat && (
-          <div style={{ borderRadius: 8, background: 'rgba(255,255,255,0.02)', padding: '10px 12px', marginBottom: 14 }}>
-            <div style={{ fontSize: 9, color: '#334155', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.1em' }}>Materieel</div>
+          <div style={{ borderRadius: 8, background: 'var(--muted)', padding: '10px 12px', marginBottom: 14 }}>
+            <div style={{ fontSize: 9, color: 'var(--muted-foreground)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.1em' }}>Materieel</div>
             {[40, 60, 50].map((w, i) => (
-              <div key={i} style={{ height: 10, background: 'rgba(255,255,255,0.04)', borderRadius: 3, marginBottom: 5, width: `${w}%`,
+              <div key={i} style={{ height: 10, background: 'var(--accent)', borderRadius: 3, marginBottom: 5, width: `${w}%`,
                 animation: 'pulse 1.5s ease-in-out infinite' }} />
             ))}
           </div>
@@ -358,11 +410,14 @@ function TrainDetailPanel({ train, onClose }: { train: PositionedTrain; onClose:
               </div>
             )}
 
-            <a href={`https://www.ns.nl/reisinformatie/treinen/${mat.code.toLowerCase()}.html`}
-              target="_blank" rel="noopener noreferrer"
-              style={{ color: '#60a5fa', fontSize: 10, textDecoration: 'none' }}>
-              Meer info over {mat.code} →
-            </a>
+            {(WIKI_URLS[mat.code.toUpperCase()] ?? WIKI_URLS[mat.code.replace(/\s.*/, '').toUpperCase()]) && (
+              <a
+                href={WIKI_URLS[mat.code.toUpperCase()] ?? WIKI_URLS[mat.code.replace(/\s.*/, '').toUpperCase()]}
+                target="_blank" rel="noopener noreferrer"
+                style={{ color: '#60a5fa', fontSize: 10, textDecoration: 'none' }}>
+                Wikipedia: {mat.code} →
+              </a>
+            )}
           </div>
         )}
 
@@ -382,7 +437,9 @@ function TrainDetailPanel({ train, onClose }: { train: PositionedTrain; onClose:
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {stops.map((s, i) => <StopRow key={`${s.uicCode}-${i}`} stop={s} />)}
+              {stops.map((s, i) => (
+                <StopRow key={`${s.uicCode}-${i}`} stop={s} onStationClick={onStationClick} />
+              ))}
             </div>
           </>
         )}
@@ -418,22 +475,27 @@ interface Props {
 
 export default function TrainMapInner({ stations, trains }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const mapRef = useRef<L.Map | null>(null)
 
   const selected = useMemo(
     () => trains.find(t => t.id === selectedId) ?? null,
     [trains, selectedId]
   )
 
-  // Polyline for selected train route (uses stop coords from detail panel)
-  // We just show the marker highlight + panel; full route polyline shown if detail loads
+  const flyToStation = useCallback((lat: number, lng: number, _name: string) => {
+    mapRef.current?.flyTo([lat, lng], 14, { animate: true, duration: 0.8 })
+  }, [])
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
 
       <MapContainer
+        ref={mapRef}
         center={[52.18, 5.38]} zoom={8} minZoom={7} maxZoom={16}
         style={{ height: '100%', width: '100%' }}
+        zoomControl={false}
       >
+        <ZoomControl position="topleft" />
         <LayersControl position="topright">
 
           {/* ── Base layers ── */}
@@ -526,6 +588,7 @@ export default function TrainMapInner({ stations, trains }: Props) {
         <TrainDetailPanel
           train={selected}
           onClose={() => setSelectedId(null)}
+          onStationClick={flyToStation}
         />
       )}
     </div>

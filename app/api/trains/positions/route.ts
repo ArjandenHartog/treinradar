@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { getVehicles } from '@/lib/ns-api'
 import { supabase } from '@/lib/supabase'
 
+// ─── In-memory cache for positions (10 second TTL) ─────────────────────────────
+let positionsCache: { data: any; timestamp: number } | null = null
+const CACHE_TTL = 10_000 // 10 seconds
+
 /**
  * Lightweight positioned train — returned on every 30s poll.
  * Heavy details (stops, material specs) come from /api/trains/info on click.
@@ -45,7 +49,11 @@ export async function GET() {
   try {
     const now = new Date()
 
-    // ── 1. Real GPS positions from Virtual Train API ──────────────────────────
+    // Check cache first
+    if (positionsCache && (now.getTime() - positionsCache.timestamp) < CACHE_TTL) {
+      return NextResponse.json(positionsCache.data)
+    }
+
     const vehicles = await getVehicles({ features: 'materieel' })
 
     if (!vehicles.length) {
@@ -95,12 +103,17 @@ export async function GET() {
         } satisfies PositionedTrain
       })
 
-    return NextResponse.json({
+    const result = {
       trains,
       count: trains.length,
       updatedAt: now.toISOString(),
       source: 'virtual-train-api',
-    })
+    }
+
+    // Cache the result
+    positionsCache = { data: result, timestamp: now.getTime() }
+
+    return NextResponse.json(result)
   } catch (err) {
     console.error('[positions]', err)
     return NextResponse.json({ trains: [], error: String(err) }, { status: 500 })
