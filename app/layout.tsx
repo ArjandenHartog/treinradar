@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="nl" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ThemeProvider defaultTheme="light" storageKey="treinradar-theme">
+        <ThemeProvider defaultTheme="dark" storageKey="treinradar-theme">
           {children}
         </ThemeProvider>
       </body>
