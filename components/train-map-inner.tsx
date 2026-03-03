@@ -188,6 +188,12 @@ function TrainDetailPanel({ train, onClose, onStationClick }: {
 }) {
   const [detail, setDetail] = useState<TrainDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [currentSpeed, setCurrentSpeed] = useState(train.speedKmh)
+
+  // Update speed whenever train prop changes
+  useEffect(() => {
+    setCurrentSpeed(train.speedKmh)
+  }, [train.speedKmh])
 
   useEffect(() => {
     setDetail(null)
@@ -300,7 +306,7 @@ function TrainDetailPanel({ train, onClose, onStationClick }: {
               fontSize: 32, fontWeight: 800, color: 'var(--foreground)',
               fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em'
             }}>
-              {train.speedKmh}
+              {currentSpeed}
             </div>
             <div style={{ fontSize: 12, color: 'var(--muted-foreground)', fontWeight: 500 }}>
               km/u
@@ -314,7 +320,7 @@ function TrainDetailPanel({ train, onClose, onStationClick }: {
             { label: 'Vervoerder',  value: train.operator },
             { label: 'Bestemming', value: train.destination || '–' },
             { label: 'Spoor',      value: train.platform || '–' },
-            { label: 'Snelheid',   value: `${train.speedKmh} km/u` },
+            { label: 'Snelheid',   value: `${currentSpeed} km/u` },
           ].map(({ label, value }) => (
             <div key={label} style={{ background: 'var(--muted)', borderRadius: 6, padding: '7px 10px' }}>
               <div style={{ fontSize: 8, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 2 }}>{label}</div>
@@ -618,6 +624,7 @@ export default function TrainMapInner({ stations, trains }: Props) {
       {/* Detail panel — outside Leaflet, overlays on right */}
       {selected && (
         <TrainDetailPanel
+          key={selected.id}
           train={selected}
           onClose={() => setSelectedId(null)}
           onStationClick={flyToStation}
