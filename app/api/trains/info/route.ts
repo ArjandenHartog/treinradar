@@ -30,7 +30,7 @@ export interface MaterialInfo {
   seats2nd: number | null
   topSpeedKmh: number | null
   facilities: Facility[]
-  facilityLabels: { icon: string; label: string }[]
+  facilityLabels: { key: string; icon: string; label: string }[]
   allowBikes: boolean
   totalSeats: number | null
   stockIdentifiers: string[]
@@ -166,7 +166,7 @@ export async function GET(req: NextRequest) {
         seats2nd:      stockResult.seats.second,
         topSpeedKmh:   stockResult.spec.topSpeedKmh,
         facilities:    mergedFac,
-        facilityLabels: mergedFac.map(f => FACILITY_LABEL[f]),
+        facilityLabels: mergedFac.map(f => ({ key: f, ...FACILITY_LABEL[f] })),
         allowBikes:    mergedFac.includes('fiets'),
         totalSeats,
         stockIdentifiers: stockIds,
@@ -183,7 +183,7 @@ export async function GET(req: NextRequest) {
         seats2nd:      totalSeats,
         topSpeedKmh:   null,
         facilities,
-        facilityLabels: facilities.map(f => FACILITY_LABEL[f]),
+        facilityLabels: facilities.map(f => ({ key: f, ...FACILITY_LABEL[f] })),
         allowBikes:    facilities.includes('fiets'),
         totalSeats,
         stockIdentifiers: stockIds,

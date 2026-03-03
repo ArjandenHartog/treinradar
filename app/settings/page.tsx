@@ -76,12 +76,12 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* HEADER */}
-      <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-background/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-4 py-2.5">
           {/* Back button */}
           <Link
             href="/"
-            className="flex items-center gap-2 rounded-md px-3 py-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="flex items-center gap-2 rounded-md px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             <span className="text-[11px] font-medium uppercase tracking-wider">Terug</span>
@@ -89,12 +89,12 @@ export default function SettingsPage() {
 
           {/* Title */}
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-500/15 text-blue-400">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
               <Settings className="h-4 w-4" />
             </div>
             <div>
-              <div className="text-sm font-semibold leading-none text-white">Instellingen</div>
-              <div className="text-[9px] uppercase tracking-widest text-zinc-600 mt-0.5">
+              <div className="text-sm font-semibold leading-none text-foreground">Instellingen</div>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">
                 Layout & Voorkeuren
               </div>
             </div>
@@ -107,14 +107,14 @@ export default function SettingsPage() {
         <div className="space-y-8">
 
           {/* THEME SETTINGS */}
-          <Card className="border-white/[0.06] bg-white/[0.02] p-6">
+          <Card className="border-border bg-card p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-purple-500/15 text-purple-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/15 text-primary">
                 <Monitor className="h-4 w-4" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-white">Thema</h2>
-                <p className="text-sm text-zinc-500">Kies hoe de app eruit ziet</p>
+                <h2 className="text-lg font-semibold text-card-foreground">Thema</h2>
+                <p className="text-sm text-muted-foreground">Kies hoe de app eruit ziet</p>
               </div>
             </div>
 
@@ -126,19 +126,19 @@ export default function SettingsPage() {
                   className={cn(
                     'flex items-center gap-4 rounded-lg border p-4 text-left transition-all',
                     theme === option.value
-                      ? 'border-purple-500/50 bg-purple-500/10 text-white'
-                      : 'border-white/[0.06] bg-white/[0.02] text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-300'
+                      ? 'border-primary/50 bg-primary/10 text-card-foreground'
+                      : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   )}
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white/[0.05]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
                     <option.icon className="h-5 w-5" />
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium">{option.label}</div>
-                    <div className="text-sm text-zinc-500">{option.description}</div>
+                    <div className="font-medium text-card-foreground">{option.label}</div>
+                    <div className="text-sm text-muted-foreground">{option.description}</div>
                   </div>
                   {theme === option.value && (
-                    <div className="h-2 w-2 rounded-full bg-purple-400" />
+                    <div className="h-2 w-2 rounded-full bg-primary" />
                   )}
                 </button>
               ))}
@@ -146,14 +146,14 @@ export default function SettingsPage() {
           </Card>
 
           {/* LAYOUT SETTINGS */}
-          <Card className="border-white/[0.06] bg-white/[0.02] p-6">
+          <Card className="border-border bg-card p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500/15 text-blue-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/15 text-primary">
                 <Layout className="h-4 w-4" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-white">Layout</h2>
-                <p className="text-sm text-zinc-500">Pas de spacing en dichtheid aan</p>
+                <h2 className="text-lg font-semibold text-card-foreground">Layout</h2>
+                <p className="text-sm text-muted-foreground">Pas de spacing en dichtheid aan</p>
               </div>
             </div>
 
@@ -165,16 +165,16 @@ export default function SettingsPage() {
                   className={cn(
                     'flex items-center gap-4 rounded-lg border p-4 text-left transition-all',
                     layoutDensity === option.value
-                      ? 'border-blue-500/50 bg-blue-500/10 text-white'
-                      : 'border-white/[0.06] bg-white/[0.02] text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-300'
+                      ? 'border-primary/50 bg-primary/10 text-card-foreground'
+                      : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   )}
                 >
                   <div className="flex-1">
-                    <div className="font-medium">{option.label}</div>
-                    <div className="text-sm text-zinc-500">{option.description}</div>
+                    <div className="font-medium text-card-foreground">{option.label}</div>
+                    <div className="text-sm text-muted-foreground">{option.description}</div>
                   </div>
                   {layoutDensity === option.value && (
-                    <div className="h-2 w-2 rounded-full bg-blue-400" />
+                    <div className="h-2 w-2 rounded-full bg-primary" />
                   )}
                 </button>
               ))}
@@ -182,20 +182,20 @@ export default function SettingsPage() {
           </Card>
 
           {/* BEHAVIOR SETTINGS */}
-          <Card className="border-white/[0.06] bg-white/[0.02] p-6">
-            <h2 className="text-lg font-semibold text-white mb-6">Gedrag</h2>
+          <Card className="border-border bg-card p-6">
+            <h2 className="text-lg font-semibold text-card-foreground mb-6">Gedrag</h2>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-medium text-white">Animaties</div>
-                  <div className="text-sm text-zinc-500">Vloeiende overgangen en effecten</div>
+                  <div className="font-medium text-card-foreground">Animaties</div>
+                  <div className="text-sm text-muted-foreground">Vloeiende overgangen en effecten</div>
                 </div>
                 <button
                   onClick={() => setAnimationsEnabled(!animationsEnabled)}
                   className={cn(
                     'relative h-6 w-11 rounded-full transition-colors',
-                    animationsEnabled ? 'bg-blue-500' : 'bg-zinc-600'
+                    animationsEnabled ? 'bg-primary' : 'bg-muted'
                   )}
                 >
                   <div

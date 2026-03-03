@@ -7,9 +7,27 @@ import {
 } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import {
+  Wifi, Bike, Zap, Bath, Accessibility,
+  Utensils, VolumeX, Wind, X,
+} from 'lucide-react'
 import type { Station } from '@/lib/supabase'
 import type { PositionedTrain } from '@/app/api/trains/positions/route'
 import type { TrainDetail, StopInfo } from '@/app/api/trains/info/route'
+
+// ─── Facility icon map ────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const FACILITY_ICON: Record<string, React.ComponentType<any>> = {
+  wifi:           Wifi,
+  fiets:          Bike,
+  stopcontact:    Zap,
+  toilet:         Bath,
+  toegankelijk:   Accessibility,
+  restaurant:     Utensils,
+  'stille-coupe': VolumeX,
+  airco:          Wind,
+}
 
 // ─── Type → accent color ──────────────────────────────────────────────────────
 
@@ -188,58 +206,54 @@ function TrainDetailPanel({ train, onClose }: { train: PositionedTrain; onClose:
       position: 'absolute', right: 0, top: 0, bottom: 0,
       width: 'clamp(300px, 28vw, 380px)',
       zIndex: 2000,
-      background: 'rgba(9,9,11,0.97)',
-      borderLeft: '1px solid rgba(255,255,255,0.07)',
+      background: 'var(--card)',
+      borderLeft: '1px solid var(--border)',
       display: 'flex', flexDirection: 'column',
       backdropFilter: 'blur(12px)',
       fontFamily: "'Courier New',monospace",
       boxShadow: '-8px 0 32px rgba(0,0,0,0.5)',
     }}>
 
-      {/* ── Hero image ── */}
-      {mat?.image && (
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={mat.image} alt={mat.fullName}
-            style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block', opacity: 0.88 }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(9,9,11,0.95))' }} />
-          <div style={{ position: 'absolute', bottom: 8, left: 12, right: 48 }}>
-            <span style={{ background: bg, color: '#fff', padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 800, letterSpacing: '.1em' }}>
-              {train.typeCode || '?'}
-            </span>
-            <div style={{ fontSize: 16, fontWeight: 800, color: '#f8fafc', marginTop: 4, lineHeight: 1.2 }}>
+      {/* ── Header ── */}
+      <div style={{ flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
+
+        {/* Train image — natural aspect ratio, dark bg, full width */}
+        {mat?.image && (
+          <div style={{ background: '#050508', padding: '10px 16px 8px' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={mat.image} alt={mat.fullName}
+              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} />
+          </div>
+        )}
+
+        {/* Type badge + train number */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px 12px', paddingRight: 46 }}>
+          <span style={{ background: bg, color: '#fff', padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 800, letterSpacing: '.1em', flexShrink: 0 }}>
+            {train.typeCode || '?'}
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#f8fafc', lineHeight: 1.2 }}>
               Trein {train.serviceNumber}
             </div>
-            {mat && <div style={{ fontSize: 10, color: '#64748b' }}>{mat.fullName}</div>}
-          </div>
-        </div>
-      )}
-
-      {/* ── Header (when no image) ── */}
-      {!mat?.image && (
-        <div style={{ padding: '14px 16px 10px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ background: bg, color: '#fff', padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 800, letterSpacing: '.1em' }}>
-              {train.typeCode || '?'}
-            </span>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#f8fafc' }}>Trein {train.serviceNumber}</div>
-              <div style={{ fontSize: 10, color: '#475569' }}>{train.operator}</div>
+            <div style={{ fontSize: 10, color: '#475569', marginTop: 1 }}>
+              {mat ? mat.fullName : train.operator}
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Close button */}
       <button
         onClick={onClose}
         style={{
           position: 'absolute', top: 10, right: 10, zIndex: 10,
-          background: 'rgba(255,255,255,0.06)', border: 'none',
-          color: '#94a3b8', width: 28, height: 28, borderRadius: 6,
-          cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--muted)', border: '1px solid var(--border)',
+          color: 'var(--muted-foreground)', width: 28, height: 28, borderRadius: 6,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
-      >✕</button>
+      >
+        <X size={14} strokeWidth={2} />
+      </button>
 
       {/* ── Scrollable body ── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 24px' }}>
@@ -247,9 +261,9 @@ function TrainDetailPanel({ train, onClose }: { train: PositionedTrain; onClose:
         {/* Status strip */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6,
-          background: 'rgba(255,255,255,0.03)', borderRadius: 8,
+          background: 'var(--muted)', borderRadius: 8,
           padding: '8px 12px', marginBottom: 14,
-          border: `1px solid ${train.cancelled ? 'rgba(239,68,68,.2)' : train.delay >= 3 ? 'rgba(245,158,11,.15)' : 'rgba(34,197,94,.12)'}`,
+          border: `1px solid ${train.cancelled ? 'var(--destructive)' : train.delay >= 3 ? 'var(--chart-2)' : 'var(--chart-1)'}`,
         }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: dColor, flexShrink: 0 }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: dColor }}>
@@ -324,13 +338,23 @@ function TrainDetailPanel({ train, onClose }: { train: PositionedTrain; onClose:
             </div>
 
             {mat.facilityLabels?.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-                {mat.facilityLabels.map(f => (
-                  <span key={f.label} title={f.label}
-                    style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 4, padding: '2px 7px', fontSize: 13, cursor: 'default' }}>
-                    {f.icon}
-                  </span>
-                ))}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+                {mat.facilityLabels.map(f => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const Icon = FACILITY_ICON[(f as any).key ?? '']
+                  return (
+                    <span key={f.label} title={f.label}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: 5, padding: '3px 7px', cursor: 'default',
+                        fontSize: 10, color: '#94a3b8',
+                      }}>
+                      {Icon && <Icon size={11} strokeWidth={1.75} color="#64748b" />}
+                      {f.label}
+                    </span>
+                  )
+                })}
               </div>
             )}
 
