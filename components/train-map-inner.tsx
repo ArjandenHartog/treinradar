@@ -3,17 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   MapContainer, TileLayer, Marker, Polyline,
-  CircleMarker, LayersControl, GeoJSON,
+  CircleMarker, LayersControl, GeoJSON, useMapEvents,
 } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import {
-  Wifi, Bike, Plug, Bath, Accessibility,
-  Utensils, VolumeX, Wind, X, ChevronRight,
-} from 'lucide-react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { Wifi, Bike, Plug, Bath, Accessibility, Utensils, VolumeX, Wind, X, ChevronRight } from 'lucide-react'
 import type { Station } from '@/lib/supabase'
 import type { PositionedTrain } from '@/app/api/trains/positions/route'
 import type { TrainDetail, StopInfo } from '@/app/api/trains/info/route'
+import { useTheme } from '@/lib/theme-provider'
 
 // ─── Facility icon map ────────────────────────────────────────────────────────
 
@@ -696,12 +695,56 @@ interface PopoverState {
   pos: { x: number; y: number }
 }
 
+function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
+  useMapEvents({
+    click: onMapClick,
+  })
+  return null
+}
+
 export default function TrainMapInner({ stations, trains }: Props) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [popover, setPopover] = useState<PopoverState | null>(null)
   const [routeStops, setRouteStops] = useState<Array<[number, number]>>([])
   const [disruptionGeo, setDisruptionGeo] = useState<{ type: 'FeatureCollection'; features: unknown[] } | null>(null)
+  const [isDarkMode, setIsDarkMode] = useState(false)
   const mapRef = useRef<L.Map | null>(null)
+  const { theme } = useTheme()
+
+  const trainParam = searchParams.get('trein')
+  const detailsParam = searchParams.get('details')
+
+  useEffect(() => {
+    if (trainParam && trains.length > 0) {
+      const trainExists = trains.some(t => t.id === trainParam)
+      if (trainExists) {
+        if (detailsParam === '1') {
+          setSelectedId(trainParam)
+          setPopover(null)
+        } else {
+          setPopover({ trainId: trainParam, pos: { x: window.innerWidth / 2, y: window.innerHeight / 2 } })
+          setSelectedId(null)
+        }
+      }
+    }
+  }, [trainParam, detailsParam, trains])
+
+  // Detect if we're in dark mode based on theme preference or system
+  useEffect(() => {
+    const updateTheme = () => {
+      const isDark = theme === 'dark' || 
+        (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      setIsDarkMode(isDark)
+    }
+    
+    updateTheme()
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    mediaQuery.addEventListener('change', updateTheme)
+    return () => mediaQuery.removeEventListener('change', updateTheme)
+  }, [theme])
 
   // Fetch disruption GeoJSON once on mount
   useEffect(() => {
@@ -719,27 +762,29 @@ export default function TrainMapInner({ stations, trains }: Props) {
   const popoverTrain = useMemo(() => popover ? trains.find(t => t.id === popover.trainId) ?? null : null, [trains, popover])
 
   const handleMarkerClick = useCallback((trainId: string, clientX: number, clientY: number) => {
-    // If clicking the already-popovered train, close it
     if (popover?.trainId === trainId) {
       setPopover(null)
+      router.replace(pathname, { scroll: false })
       return
     }
-    // Close sidebar when clicking a new train
     setSelectedId(null)
     setRouteStops([])
     setPopover({ trainId, pos: { x: clientX, y: clientY } })
-  }, [popover])
+    router.replace(`?trein=${trainId}`, { scroll: false })
+  }, [popover, router, pathname])
 
   const handleViewDetails = useCallback(() => {
     if (!popover) return
     setSelectedId(popover.trainId)
     setPopover(null)
-  }, [popover])
+    router.replace(`?trein=${popover.trainId}&details=1`, { scroll: false })
+  }, [popover, router])
 
   const handleClosePanel = useCallback(() => {
     setSelectedId(null)
     setRouteStops([])
-  }, [])
+    router.replace(pathname, { scroll: false })
+  }, [router, pathname])
 
   const handleStopsLoaded = useCallback((stops: Array<[number, number]>) => {
     setRouteStops(stops)
@@ -757,24 +802,64 @@ export default function TrainMapInner({ stations, trains }: Props) {
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
       >
+        <MapClickHandler onMapClick={() => {
+          if (popover || selectedId) {
+            setPopover(null)
+            setSelectedId(null)
+            setRouteStops([])
+            router.replace(pathname, { scroll: false })
+          }
+        }} />
         <LayersControl position="topright">
-          <LayersControl.BaseLayer checked name="Kaart">
+          {/* Base Layers */}
+          <LayersControl.BaseLayer checked={!isDarkMode} name="Kaart (OSM)">
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' maxZoom={19} />
           </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="Dark">
+          <LayersControl.BaseLayer checked={isDarkMode} name="Dark (CARTO)">
             <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
               subdomains="abcd" maxZoom={19} />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Topografisch">
+            <TileLayer url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.opentopomap.org">OpenTopoMap</a> contributors'
+              maxZoom={17} />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Toner Light">
+            <TileLayer url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner-lite/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://www.stamen.com">Stamen Design</a>'
+              subdomains="abcd" maxZoom={20} />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Toner Dark">
+            <TileLayer url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://www.stamen.com">Stamen Design</a>'
+              subdomains="abcd" maxZoom={20} />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Terrein (Stamen)">
+            <TileLayer url="https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://www.stamen.com">Stamen Design</a>'
+              subdomains="abcd" maxZoom={17} />
           </LayersControl.BaseLayer>
           <LayersControl.BaseLayer name="Satelliet">
             <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               attribution='Tiles &copy; Esri' maxZoom={18} />
           </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="Terrein">
+          <LayersControl.BaseLayer name="Terrein (Esri)">
             <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
               attribution='Tiles &copy; Esri' maxZoom={18} />
           </LayersControl.BaseLayer>
+
+          {/* Overlay Layers */}
+          <LayersControl.Overlay name="Fietsen">
+            <TileLayer url="https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, <a href="https://cyclosm.org">CyclOSM</a>'
+              maxZoom={20} opacity={0.7} />
+          </LayersControl.Overlay>
+          <LayersControl.Overlay name="Hoogte">
+            <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief_Map/MapServer/tile/{z}/{y}/{x}"
+              attribution='Tiles &copy; Esri' maxZoom={13} opacity={0.5} />
+          </LayersControl.Overlay>
           <LayersControl.Overlay checked name="Spoorwegen">
             <TileLayer url="https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png"
               attribution='Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (CC-BY-SA)'
@@ -838,7 +923,10 @@ export default function TrainMapInner({ stations, trains }: Props) {
         <QuickPreviewPopover
           train={popoverTrain}
           position={popover.pos}
-          onClose={() => setPopover(null)}
+          onClose={() => {
+            setPopover(null)
+            router.replace(pathname, { scroll: false })
+          }}
           onViewDetails={handleViewDetails}
         />
       )}
