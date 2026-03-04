@@ -132,16 +132,24 @@ export default function Dashboard() {
     const data: TrainStats = await res.json()
     setStats(data)
     setLastUpdate(new Date())
-    setPunctualityHistory(prev => {
-      const time = new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
-      const point: PunctualityPoint = {
-        time,
-        punctuality: data.punctuality,
-        onTime: Math.max(0, data.totalToday - data.delayedToday - data.cancelledToday),
-        total: data.totalToday,
-      }
-      return [...prev, point].slice(-18)
-    })
+  }, [])
+
+  const fetchPunctualityHistory = useCallback(async () => {
+    if (!mounted.current) return
+    const since = new Date(Date.now() - 15 * 60 * 1000).toISOString().slice(0, 16)
+    const { data } = await supabase
+      .from('punctuality_snapshots')
+      .select('recorded_at, punctuality, on_time, active_trains')
+      .gte('recorded_at', since)
+      .order('recorded_at', { ascending: true })
+    if (!data || !mounted.current) return
+    const points: PunctualityPoint[] = data.map(r => ({
+      time: r.recorded_at.slice(11, 16), // 'HH:MM'
+      punctuality: Number(r.punctuality),
+      onTime: r.on_time ?? 0,
+      total: r.active_trains ?? 0,
+    }))
+    setPunctualityHistory(points)
   }, [])
 
   const fetchDisruptions = useCallback(async () => {
@@ -172,21 +180,22 @@ export default function Dashboard() {
   useEffect(() => {
     mounted.current = true
     const init = async () => {
-      await Promise.all([fetchStations(), fetchTrains(), fetchStats(), fetchDisruptions()])
+      await Promise.all([fetchStations(), fetchTrains(), fetchStats(), fetchDisruptions(), fetchPunctualityHistory()])
       if (mounted.current) setLoading(false)
     }
     init()
     return () => { mounted.current = false }
-  }, [fetchStations, fetchTrains, fetchStats, fetchDisruptions])
+  }, [fetchStations, fetchTrains, fetchStats, fetchDisruptions, fetchPunctualityHistory])
 
   // ── Polling ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    const t1 = setInterval(fetchTrains, 5_000) // Elke 5s voor supersnelle snelheid updates
+    const t1 = setInterval(fetchTrains, 5_000)
     const t2 = setInterval(fetchStats, 30_000)
     const t3 = setInterval(fetchDisruptions, 90_000)
-    return () => { clearInterval(t1); clearInterval(t2); clearInterval(t3) }
-  }, [fetchTrains, fetchStats, fetchDisruptions])
+    const t4 = setInterval(fetchPunctualityHistory, 60_000) // refresh from DB every minute
+    return () => { clearInterval(t1); clearInterval(t2); clearInterval(t3); clearInterval(t4) }
+  }, [fetchTrains, fetchStats, fetchDisruptions, fetchPunctualityHistory])
 
   // ── Supabase realtime ─────────────────────────────────────────────────────────
 

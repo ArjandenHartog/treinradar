@@ -88,6 +88,12 @@ export async function GET() {
           trainSeen.set(trainNumber, true)
         }
 
+        // Extract cancellation reason from messages array
+        const msgs = dep.messages as Array<{ message?: string; text?: string }> | undefined
+        const cancelReason = dep.cancelled && msgs?.length
+          ? (msgs[0]?.message ?? msgs[0]?.text ?? '')
+          : ''
+
         rows.push({
           id: depKey,
           service_number: trainNumber,
@@ -100,6 +106,7 @@ export async function GET() {
           operator: dep.product?.operatorName ?? dep.product?.operatorCode ?? 'NS',
           delay,
           cancelled: dep.cancelled ?? false,
+          cancel_reason: cancelReason,
           departure_time: dep.plannedDateTime ?? dep.actualDateTime,
           platform: dep.actualTrack ?? dep.plannedTrack ?? '',
           via: dep.routeStations?.map(r => r.mediumName).join(' · ') ?? '',

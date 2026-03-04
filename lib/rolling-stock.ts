@@ -42,15 +42,13 @@ const STOCK: Record<string, MaterialSpec> = {
   SNG: {
     code: 'SNG',
     fullName: 'Sprinter Nieuwe Generatie',
-    images: { default: '/sng_4.png', 1: '/sng_4.png', 2: '/sng_4.png', 3: '/sng_4.png', 4: '/sng_4.png' },
+    images: { default: '/sng_4.png', 3: '/sng_3.png', 4: '/sng_4.png' },
     seats: {
-      1: { first: 38,  second: 163 },
-      2: { first: 76,  second: 326 },
-      3: { first: 114, second: 489 },
-      4: { first: 152, second: 652 },
-      default: { first: 38, second: 163 },
+      3: { first: 19, second: 131 },
+      4: { first: 19, second: 182 },
+      default: { first: 19, second: 131 },
     },
-    lengths: { 1: 75, 2: 150, 3: 225, 4: 300, default: 75 },
+    lengths: { 3: 75, 4: 100, default: 75 },
     topSpeedKmh: 160,
     facilities: ['wifi', 'stille-coupe', 'fiets', 'toegankelijk', 'stopcontact', 'toilet', 'airco'],
   },
@@ -58,57 +56,99 @@ const STOCK: Record<string, MaterialSpec> = {
   SLT: {
     code: 'SLT',
     fullName: 'Sprinter Lighttrain',
-    images: { default: '/slt_4.png', 4: '/slt_4.png', 5: '/slt_4.png', 6: '/slt_6.png' },
+    images: { default: '/slt_4.png', 4: '/slt_4.png', 6: '/slt_6.png' },
     seats: {
-      4: { first: 0, second: 228 },
-      6: { first: 0, second: 360 },
-      default: { first: 0, second: 228 },
+      4: { first: 20, second: 166 },
+      6: { first: 40, second: 240 },
+      default: { first: 20, second: 166 },
     },
     lengths: { 4: 68, 6: 103, default: 68 },
     topSpeedKmh: 160,
-    facilities: ['stille-coupe', 'toegankelijk', 'toilet', 'airco'],
+    facilities: ['fiets', 'toegankelijk', 'toilet', 'airco'],
   },
 
   VIRM: {
     code: 'VIRM',
     fullName: 'Verlengd InterRegio Materieel',
-    images: { default: '/virm_4.png', 4: '/virm_4.png', 5: '/virm_4.png', 6: '/virmm1_6.png' },
+    images: { default: '/virm_4.png', 4: '/virm_4.png', 6: '/virmm1_6.png' },
     seats: {
-      4: { first: 97,  second: 322 },
-      6: { first: 145, second: 483 },
-      default: { first: 97, second: 322 },
+      4: { first: 64, second: 310 },
+      6: { first: 123, second: 428 },
+      default: { first: 64, second: 310 },
     },
     lengths: { 4: 104, 6: 158, default: 104 },
     topSpeedKmh: 160,
-    facilities: ['stille-coupe', 'fiets', 'toegankelijk', 'toilet', 'airco'],
+    facilities: ['wifi', 'stille-coupe', 'fiets', 'stopcontact', 'toilet', 'airco'],
+  },
+
+  VIRMM1: {
+    code: 'VIRMM1',
+    fullName: 'Verlengd InterRegio Materieel (Serie 1)',
+    images: { default: '/virmm1_4.png', 4: '/virmm1_4.png', 6: '/virmm1_6.png' },
+    seats: {
+      4: { first: 82, second: 284 },
+      6: { first: 123, second: 428 },
+      default: { first: 82, second: 284 },
+    },
+    lengths: { 4: 104, 6: 158, default: 104 },
+    topSpeedKmh: 160,
+    facilities: ['wifi', 'stille-coupe', 'fiets', 'stopcontact', 'toilet', 'airco'],
+  },
+
+  VIRMM2: {
+    code: 'VIRMM2',
+    fullName: 'Verlengd InterRegio Materieel (Serie 2)',
+    images: { default: '/virmm1_4.png', 4: '/virmm1_4.png', 6: '/virmm1_6.png' },
+    seats: {
+      4: { first: 59, second: 323 },
+      6: { first: 100, second: 467 },
+      default: { first: 59, second: 323 },
+    },
+    lengths: { 4: 104, 6: 158, default: 104 },
+    topSpeedKmh: 160,
+    facilities: ['wifi', 'stille-coupe', 'fiets', 'stopcontact', 'toilet', 'airco'],
   },
 
   ICM: {
     code: 'ICM',
     fullName: 'InterCity Materieel (Koploper)',
-    images: { default: '/icm_3.png', 3: '/icm_3.png', 4: '/icm_3.png' },
+    images: { default: '/icm_3.png', 3: '/icm_3.png', 4: '/icm_4.png' },
     seats: {
-      3: { first: 64, second: 185 },
-      4: { first: 92, second: 260 },
-      default: { first: 64, second: 185 },
+      3: { first: 35, second: 166 },
+      4: { first: 56, second: 214 },
+      default: { first: 35, second: 166 },
     },
     lengths: { 3: 83, 4: 110, default: 83 },
     topSpeedKmh: 200,
-    facilities: ['stille-coupe', 'toegankelijk', 'toilet', 'airco'],
+    facilities: ['wifi', 'stille-coupe', 'stopcontact', 'toilet', 'airco', 'fiets'],
   },
 
   DDZ: {
     code: 'DDZ',
-    fullName: 'Dubbeldekker Sprinter',
-    images: { default: '/virm_4.png' },
+    fullName: 'Dubbeldekker Zone',
+    images: { default: '/ddz_4.png', 4: '/ddz_4.png', 6: '/ddz_6.png' },
     seats: {
-      4: { first: 0, second: 342 },
-      6: { first: 0, second: 516 },
-      default: { first: 0, second: 342 },
+      4: { first: 68, second: 272 },
+      6: { first: 108, second: 445 },
+      default: { first: 68, second: 272 },
     },
     lengths: { 4: 104, 6: 158, default: 104 },
     topSpeedKmh: 140,
-    facilities: ['toegankelijk', 'toilet', 'airco'],
+    facilities: ['wifi', 'stille-coupe', 'stopcontact', 'toilet', 'airco', 'fiets'],
+  },
+
+  ICNG: {
+    code: 'ICNG',
+    fullName: 'InterCity Nieuwe Generatie',
+    images: { default: '/icng_5.png', 5: '/icng_5.png', 8: '/icng_B_8.png' },
+    seats: {
+      5: { first: 58, second: 200 },
+      8: { first: 85, second: 332 },
+      default: { first: 58, second: 200 },
+    },
+    lengths: { 5: 155, 8: 245, default: 155 },
+    topSpeedKmh: 200,
+    facilities: ['wifi', 'stille-coupe', 'stopcontact', 'toilet', 'airco', 'fiets', 'toegankelijk'],
   },
 
   SGM: {
@@ -138,11 +178,16 @@ const STOCK: Record<string, MaterialSpec> = {
   FLIRT: {
     code: 'FLIRT',
     fullName: 'Stadler FLIRT',
-    images: { default: '/slt_4.png' },
-    seats: { default: { first: 0, second: 200 } },
-    lengths: { default: 75 },
+    images: { default: '/nsr_flirt_3.png', 2: '/nsr_flirt_3.png', 3: '/nsr_flirt_3.png', 4: '/nsr_flirt_3.png' },
+    seats: {
+      2: { first: 20, second: 100 },
+      3: { first: 32, second: 126 },
+      4: { first: 32, second: 182 },
+      default: { first: 32, second: 126 },
+    },
+    lengths: { 2: 54, 3: 75, 4: 100, default: 75 },
     topSpeedKmh: 160,
-    facilities: ['toegankelijk', 'toilet', 'airco'],
+    facilities: ['wifi', 'stopcontact', 'toilet', 'airco', 'fiets', 'toegankelijk'],
   },
 
   // EBS Valleilijn FLIRT3 diesel treinstellen
@@ -247,12 +292,24 @@ function normalise(raw: string): string {
   const MAP: Record<string, string> = {
     'SNGDOORSERIES':  'SNG',
     'SNGFLIRT3':      'SNG',
-    'VIRMM1':         'VIRM',
+    // VIRM varianten — bewaar m1/m2 distinctie
+    'VIRMM1':         'VIRMM1',
+    'VIRMM2':         'VIRMM2',
     'ICMM1':          'ICM',
     'ICMM1KOPLOPER':  'ICM',
     'SLTSTADLER':     'SLT',
     'SLTCORADIA':     'SLT',
-    // FLIRT varianten voor Valleilijn
+    // ICNG aliassen
+    'ICNGB':          'ICNG',
+    'ICNG-B':         'ICNG',
+    'ICNGBATTERIJ':   'ICNG',
+    // FLIRT varianten voor NS (2, 3, 4 parts)
+    'NSRFLIRT':       'FLIRT',
+    'NSRFLIRT3':      'FLIRT',
+    'FLIRT2':         'FLIRT',
+    'FLIRT3':         'FLIRT',
+    'FLIRT4':         'FLIRT',
+    // FLIRT varianten voor Valleilijn (EBS)
     'FLIRT3DIESEL':   'FLIRT3',
     'STADLERFLIRT3':  'FLIRT3',
     'FLIRT3EBS':      'FLIRT3',

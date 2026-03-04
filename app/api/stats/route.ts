@@ -117,6 +117,19 @@ export async function GET() {
       ? nonCancelled.reduce((max, t) => (t.delay ?? 0) > (max.delay ?? 0) ? t : max)
       : null
 
+    // ── Save punctuality snapshot (bucketed to the minute, at most 1/min) ─────
+    const minuteKey = new Date().toISOString().slice(0, 16) // 'YYYY-MM-DDTHH:MM'
+    // Fire-and-forget — don't block the response
+    supabase.from('punctuality_snapshots').upsert({
+      recorded_at: minuteKey,
+      punctuality,
+      avg_delay: avgDelayToday,
+      active_trains: total,
+      on_time: onTime,
+      delayed,
+      cancelled,
+    }, { onConflict: 'recorded_at', ignoreDuplicates: true }).then(() => {})
+
     return NextResponse.json({
       activeTrains: total,
       cancelledToday,

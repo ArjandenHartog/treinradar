@@ -29,10 +29,22 @@ export type TrainDeparture = {
   operator: string
   delay: number
   cancelled: boolean
+  cancel_reason: string | null
   departure_time: string
   platform: string
   via: string
   updated_at: string
+}
+
+export type PunctualitySnapshot = {
+  recorded_at: string   // 'YYYY-MM-DDTHH:MM' (minute bucket)
+  punctuality: number
+  avg_delay: number
+  active_trains: number
+  on_time: number
+  delayed: number
+  cancelled: number
+  created_at: string
 }
 
 export type Disruption = {
