@@ -19,10 +19,10 @@ export function LiveClock() {
 
   return (
     <div className="flex flex-col items-end select-none">
-      <span className="font-mono text-xl font-semibold text-white tabular-nums tracking-tight leading-none">
+      <span className="font-mono text-lg sm:text-xl font-semibold text-white tabular-nums tracking-tight leading-none">
         {time}
       </span>
-      <span className="text-[10px] text-zinc-500 mt-0.5 uppercase tracking-wider">{date}</span>
+      <span className="text-[10px] text-zinc-500 mt-0.5 uppercase tracking-wider hidden sm:block">{date}</span>
     </div>
   )
 }

@@ -225,8 +225,8 @@ export default function Dashboard() {
       <Header />
 
       {/* DASHBOARD: Tabs + Refresh + Live status */}
-      <div className="sticky top-0 z-40 border-b border-white/[0.06] bg-background/95 backdrop-blur-md -mt-px">
-        <div className="mx-auto flex max-w-[1600px] items-center px-4 py-2.5 gap-2">
+      <div className="sticky top-0 z-40 w-full border-b border-white/[0.06] bg-background/95 backdrop-blur-md -mt-px overflow-x-auto">
+        <div className="mx-auto flex min-w-max max-w-[1600px] items-center px-4 py-2.5 gap-2">
 
           {/* Tab buttons */}
           <div className="flex items-center gap-1 rounded-md border border-white/[0.06] bg-white/[0.02] p-0.5">
@@ -251,7 +251,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <button
               onClick={refreshAll}
               disabled={refreshing}
@@ -268,7 +268,7 @@ export default function Dashboard() {
 
             <div className="flex items-center gap-1.5">
               <span className="live-dot h-2 w-2 rounded-full bg-green-500" />
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-green-500">Live</span>
+              <span className="hidden sm:block font-mono text-[10px] font-semibold uppercase tracking-widest text-green-500">Live</span>
             </div>
 
             <Separator orientation="vertical" className="h-6 opacity-10" />

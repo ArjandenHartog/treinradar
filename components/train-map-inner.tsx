@@ -412,6 +412,11 @@ function QuickPreviewPopover({
 }) {
   const [detail, setDetail] = useState<TrainDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [drag, setDrag] = useState({ x: 0, y: 0 })
+  const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
+
+  // Reset drag when a different train is shown
+  useEffect(() => { setDrag({ x: 0, y: 0 }) }, [train.serviceNumber])
 
   useEffect(() => {
     setDetail(null)
@@ -426,15 +431,39 @@ function QuickPreviewPopover({
   const dColor = delayColor(train.delay, train.cancelled)
   const delayText = train.cancelled ? 'Uitval' : train.delay <= 0 ? 'Op tijd' : `+${train.delay} min`
 
-  // Smart positioning: keep within viewport
-  const W = 280
-  let top = position.y - 20
-  let left = position.x + 16
-  if (typeof window !== 'undefined') {
-    if (left + W > window.innerWidth - 8) left = position.x - W - 16
-    if (top + 460 > window.innerHeight - 8) top = Math.max(8, window.innerHeight - 468)
-    if (top < 8) top = 8
+  // Positioning: mobile = smaller + above tap; desktop = beside tap
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
+  const W = isMobile ? Math.min(window.innerWidth - 16, 252) : 280
+  const POPUP_H = 400 // approximate height
+
+  let baseTop: number, baseLeft: number
+  if (isMobile) {
+    // Center on tap, appear above
+    baseLeft = Math.max(8, Math.min(position.x - W / 2, window.innerWidth - W - 8))
+    baseTop = position.y - POPUP_H - 16
+    if (baseTop < 56) baseTop = position.y + 24 // not enough space above → go below
+  } else {
+    baseTop = position.y - 20
+    baseLeft = position.x + 16
+    if (baseLeft + W > window.innerWidth - 8) baseLeft = position.x - W - 16
+    if (baseTop + POPUP_H > window.innerHeight - 8) baseTop = Math.max(8, window.innerHeight - POPUP_H - 8)
+    if (baseTop < 8) baseTop = 8
   }
+
+  const top  = baseTop  + drag.y
+  const left = baseLeft + drag.x
+
+  // Drag handlers (pointer events work on both mouse and touch)
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    dragRef.current = { sx: e.clientX, sy: e.clientY, ox: drag.x, oy: drag.y }
+    e.currentTarget.setPointerCapture(e.pointerId)
+    e.stopPropagation()
+  }
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return
+    setDrag({ x: dragRef.current.ox + e.clientX - dragRef.current.sx, y: dragRef.current.oy + e.clientY - dragRef.current.sy })
+  }
+  const onPointerUp = () => { dragRef.current = null }
 
   return (
     <>
@@ -459,13 +488,18 @@ function QuickPreviewPopover({
         }}
         onClick={e => e.stopPropagation()}
       >
-        {/* ── Title bar ── */}
-        <div style={{ padding: '14px 40px 10px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        {/* ── Title bar (drag handle) ── */}
+        <div
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          style={{ padding: '12px 40px 10px 14px', borderBottom: '1px solid rgba(255,255,255,0.07)', cursor: 'grab', touchAction: 'none', userSelect: 'none' }}
+        >
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontSize: 22, fontWeight: 800, color: '#f8fafc', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+            <span style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: '#f8fafc', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
               {train.serviceNumber}
             </span>
-            <span style={{ fontSize: 13, color: '#6b7280', fontWeight: 400 }}>
+            <span style={{ fontSize: isMobile ? 11 : 13, color: '#6b7280', fontWeight: 400 }}>
               {mat?.fullName || train.typeCode || train.operator}
             </span>
           </div>
@@ -480,7 +514,7 @@ function QuickPreviewPopover({
         </button>
 
         {/* ── Info rows ── */}
-        <div style={{ padding: '10px 16px 6px' }}>
+        <div style={{ padding: '8px 14px 6px' }}>
           <InfoRow label="Vervoerder" value={train.operator} />
           <InfoRow label="Bestemming" value={train.destination || '—'} />
           <InfoRow label="Snelheid" value={`${train.speedKmh} km/u`} />
@@ -488,8 +522,8 @@ function QuickPreviewPopover({
           <InfoRow label="Vertraging" value={delayText} valueColor={dColor} />
         </div>
 
-        {/* ── Train image ── */}
-        {(mat?.image || loading) && (
+        {/* ── Train image (hidden on mobile to save space) ── */}
+        {!isMobile && (mat?.image || loading) && (
           <div style={{ background: '#09090b', marginTop: 6, minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {mat?.image ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -505,7 +539,7 @@ function QuickPreviewPopover({
         )}
 
         {/* ── Material section ── */}
-        <div style={{ padding: '10px 16px 4px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ padding: '8px 14px 4px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           {loading && !mat ? (
             <div style={{ display: 'flex', gap: 6 }}>
               {[50, 70, 55].map((w, i) => (
