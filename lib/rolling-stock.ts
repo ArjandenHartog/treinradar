@@ -281,6 +281,76 @@ const STOCK: Record<string, MaterialSpec> = {
     topSpeedKmh: 320,
     facilities: ['wifi', 'restaurant', 'stille-coupe', 'toegankelijk', 'stopcontact', 'toilet', 'airco'],
   },
+
+  // ICE-3NEO (Siemens ICE-3 Neo)
+  ICE3NEO: {
+    code: 'ICE3NEO',
+    fullName: 'Siemens ICE-3 Neo',
+    images: { default: '/virm_4.png' },
+    seats: { default: { first: 205, second: 616 } },
+    lengths: { default: 405 },
+    topSpeedKmh: 320,
+    facilities: ['wifi', 'restaurant', 'stille-coupe', 'toegankelijk', 'stopcontact', 'toilet', 'airco'],
+  },
+
+  // TGV PB (TGV InOui)
+  TGV: {
+    code: 'TGV',
+    fullName: 'TGV InOui',
+    images: { default: '/virm_4.png' },
+    seats: { default: { first: 340, second: 420 } },
+    lengths: { default: 381 },
+    topSpeedKmh: 320,
+    facilities: ['wifi', 'restaurant', 'stille-coupe', 'toegankelijk', 'stopcontact', 'toilet', 'airco'],
+  },
+
+  // Bombardier ELOC Vector
+  ELOCVECT: {
+    code: 'ELOCVECT',
+    fullName: 'Bombardier ELOC Vector',
+    images: { default: '/slt_4.png' },
+    seats: { default: { first: 0, second: 128 } },
+    lengths: { default: 90 },
+    topSpeedKmh: 100,
+    facilities: ['toilet', 'airco'],
+  },
+
+  // Stadler S26 (ÖBB name I11)
+  I11: {
+    code: 'I11',
+    fullName: 'Stadler S26 (ÖBB)',
+    images: { default: '/slt_4.png' },
+    seats: { default: { first: 108, second: 496 } },
+    lengths: { default: 192 },
+    topSpeedKmh: 200,
+    facilities: ['wifi', 'stille-coupe', 'toilet', 'airco', 'fiets', 'toegankelijk'],
+  },
+
+  // Stadler KISS (MS75/RABe 75)
+  MS75: {
+    code: 'MS75',
+    fullName: 'Stadler KISS (RABe 75)',
+    images: { default: '/slt_4.png' },
+    seats: { default: { first: 42, second: 318 } },
+    lengths: { default: 99 },
+    topSpeedKmh: 160,
+    facilities: ['wifi', 'fiets', 'toilet', 'airco', 'toegankelijk'],
+  },
+
+  // ÖBB NightJet
+  NIGHTJET: {
+    code: 'NIGHTJET',
+    fullName: 'ÖBB NightJet',
+    images: { default: '/slt_4.png', 5: '/slt_6.png', 7: '/slt_6.png' },
+    seats: {
+      5: { first: 49, second: 110 },
+      7: { first: 92, second: 257 },
+      default: { first: 49, second: 110 },
+    },
+    lengths: { 5: 132, 7: 185, default: 132 },
+    topSpeedKmh: 200,
+    facilities: ['restaurant', 'toilet', 'airco', 'stille-coupe', 'toegankelijk'],
+  },
 }
 
 // ─── Lookup helpers ───────────────────────────────────────────────────────────
@@ -328,6 +398,21 @@ function normalise(raw: string): string {
     'EUROSTAR':       'EUR',
     'E320':           'EUR',
     'E300':           'EUR',
+    // International trains
+    'ICE3NEO':        'ICE3NEO',
+    'SIEMENSICE3NEO': 'ICE3NEO',
+    'TGVPB':          'TGV',
+    'TGVINUI':        'TGV',
+    'ELOCVECTOR':     'ELOCVECT',
+    'BOMBARDIERELOCVECT': 'ELOCVECT',
+    'S26':            'I11',
+    'STADLERS26':     'I11',
+    'KISS':           'MS75',
+    'RAB75':          'MS75',
+    'STADLERKISS':    'MS75',
+    'NIGHTJET':       'NIGHTJET',
+    'OBBNJB':         'NIGHTJET',
+    'OBBBUS':         'NIGHTJET',
   }
   return MAP[u] ?? u
 }

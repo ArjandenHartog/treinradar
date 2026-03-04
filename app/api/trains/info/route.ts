@@ -34,6 +34,11 @@ export interface MaterialInfo {
   allowBikes: boolean
   totalSeats: number | null
   stockIdentifiers: string[]
+  parts: Array<{
+    number: string
+    type: string | null
+    facilities: string[]
+  }>
 }
 
 export interface TrainDetail {
@@ -149,6 +154,12 @@ export async function GET(req: NextRequest) {
   const totalSeats = stockData?.numberOfSeats ?? null
   const trainType  = stockData?.trainType ?? null
   const stockIds   = stockData?.trainParts?.map(p => p.stockIdentifier ?? '').filter(Boolean) ?? []
+  
+  const trainParts = stockData?.trainParts?.map(p => ({
+    number: p.stockIdentifier ?? '',
+    type: trainType,
+    facilities: p.facilities ?? [],
+  })) ?? []
 
   let material: MaterialInfo | null = null
 
@@ -170,6 +181,7 @@ export async function GET(req: NextRequest) {
         allowBikes:    mergedFac.includes('fiets'),
         totalSeats,
         stockIdentifiers: stockIds,
+        parts: trainParts.length > 0 ? trainParts : stockIds.map(n => ({ number: n, type: trainType, facilities: [] })),
       }
     } else if (imageUri) {
       // We have an image but no static DB entry — build minimal material
@@ -187,6 +199,7 @@ export async function GET(req: NextRequest) {
         allowBikes:    facilities.includes('fiets'),
         totalSeats,
         stockIdentifiers: stockIds,
+        parts: trainParts.length > 0 ? trainParts : stockIds.map(n => ({ number: n, type: trainType, facilities: [] })),
       }
     }
   }

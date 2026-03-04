@@ -1,9 +1,17 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { ChevronRight, Loader2, MapPin, Clock, Zap, AlertCircle } from 'lucide-react'
+import { ChevronRight, Loader2, MapPin, Clock, Zap, AlertCircle, TriangleAlert } from 'lucide-react'
 import { Header } from '@/components/header'
 import type { Station } from '@/lib/supabase'
+
+interface StationDisruption {
+  id: string
+  type: string
+  isActive: boolean
+  title: string
+  topic?: string
+}
 
 interface TripLeg {
   idx: string
@@ -56,6 +64,7 @@ export default function TravelPlannerPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [disruptions, setDisruptions] = useState<StationDisruption[]>([])
 
   // Load stations
   useEffect(() => {
@@ -132,6 +141,21 @@ export default function TravelPlannerPage() {
       if (!fetchedTrips.length) {
         setError('Geen verbindingen gevonden voor deze zoekopdracht')
       }
+
+      // Fetch disruptions for from + to station
+      setDisruptions([])
+      const codes = [fromStationObj!.abbreviation, toStationObj!.abbreviation]
+      const disruptionResults = await Promise.all(
+        codes.map(code =>
+          fetch(`/api/disruptions/station?code=${encodeURIComponent(code)}`)
+            .then(r => r.ok ? r.json() as Promise<StationDisruption[]> : [])
+            .catch(() => [] as StationDisruption[])
+        )
+      )
+      const allDisruptions = disruptionResults.flat()
+      // Deduplicate by id
+      const seen = new Set<string>()
+      setDisruptions(allDisruptions.filter(d => d.isActive && !seen.has(d.id) && seen.add(d.id) && true))
     } catch (err) {
       setError('Er is een fout opgetreden bij het zoeken naar verbindingen')
       console.error('Trip search error:', err)
@@ -395,6 +419,40 @@ export default function TravelPlannerPage() {
           }}>
             <AlertCircle size={20} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
             <p style={{ color: '#fecaca', fontSize: 14 }}>{error}</p>
+          </div>
+        )}
+
+        {/* Disruption warnings */}
+        {disruptions.length > 0 && (
+          <div style={{ marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {disruptions.map(d => (
+              <div
+                key={d.id}
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'flex-start',
+                  background: d.type === 'CALAMITY' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
+                  border: `1px solid ${d.type === 'CALAMITY' ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.35)'}`,
+                  borderRadius: 8,
+                  padding: '12px 14px',
+                }}
+              >
+                <TriangleAlert
+                  size={16}
+                  color={d.type === 'CALAMITY' ? '#ef4444' : '#f59e0b'}
+                  style={{ flexShrink: 0, marginTop: 1 }}
+                />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: d.type === 'CALAMITY' ? '#fca5a5' : '#fcd34d', marginBottom: 2 }}>
+                    {d.title}
+                  </div>
+                  {d.topic && (
+                    <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{d.topic}</div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

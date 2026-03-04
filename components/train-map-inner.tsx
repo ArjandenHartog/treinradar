@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   MapContainer, TileLayer, Marker, Polyline,
-  CircleMarker, LayersControl,
+  CircleMarker, LayersControl, GeoJSON,
 } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -352,6 +352,19 @@ function TrainDetailPanel({ train, onClose, onStationClick, onStopsLoaded }: {
                 })}
               </div>
             )}
+            {mat.parts && mat.parts.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 8, color: '#334155', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Treindelen</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {mat.parts.map((part, i) => (
+                    <span key={i} title={part.type || 'Onbekend'}
+                      style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 10, color: '#93c5fd', fontFamily: 'monospace' }}>
+                      {part.number || '–'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -687,7 +700,20 @@ export default function TrainMapInner({ stations, trains }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [popover, setPopover] = useState<PopoverState | null>(null)
   const [routeStops, setRouteStops] = useState<Array<[number, number]>>([])
+  const [disruptionGeo, setDisruptionGeo] = useState<{ type: 'FeatureCollection'; features: unknown[] } | null>(null)
   const mapRef = useRef<L.Map | null>(null)
+
+  // Fetch disruption GeoJSON once on mount
+  useEffect(() => {
+    fetch('/api/disruptions/geojson')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.features?.length) {
+          setDisruptionGeo(data)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const selected = useMemo(() => trains.find(t => t.id === selectedId) ?? null, [trains, selectedId])
   const popoverTrain = useMemo(() => popover ? trains.find(t => t.id === popover.trainId) ?? null : null, [trains, popover])
@@ -758,6 +784,22 @@ export default function TrainMapInner({ stations, trains }: Props) {
             <TileLayer url="https://{s}.tiles.openrailwaymap.org/maxspeed/{z}/{x}/{y}.png"
               attribution='Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (CC-BY-SA)'
               maxZoom={19} opacity={0.8} />
+          </LayersControl.Overlay>
+          <LayersControl.Overlay checked name="Storingen">
+            <GeoJSON
+              key={disruptionGeo?.features.length ?? -1}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              data={(disruptionGeo ?? { type: 'FeatureCollection', features: [] }) as any}
+              style={(feature) => ({
+                color: feature?.properties?.disruptionType === 'CALAMITY' ? '#ef4444' : '#f59e0b',
+                weight: 5,
+                opacity: 0.85,
+              })}
+              onEachFeature={(feature, layer) => {
+                const title = feature.properties?.disruptionTitle as string | undefined
+                if (title) layer.bindTooltip(title, { sticky: true, className: '' })
+              }}
+            />
           </LayersControl.Overlay>
         </LayersControl>
 

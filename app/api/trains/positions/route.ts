@@ -2,23 +2,23 @@ import { NextResponse } from 'next/server'
 import { getVehicles } from '@/lib/ns-api'
 import { supabase } from '@/lib/supabase'
 
-// ─── In-memory cache for positions (500ms TTL for real-time updates) ─────────────────────────────
-let positionsCache: { data: any; timestamp: number } | null = null
-const CACHE_TTL = 500 // 500ms for smooth 1-second refresh
+// ─── In-memory cache (500ms TTL for smooth real-time updates) ─────────────────
+let positionsCache: { data: unknown; timestamp: number } | null = null
+const CACHE_TTL = 500
 
 /**
- * Lightweight positioned train — returned on every 30s poll.
- * Heavy details (stops, material specs) come from /api/trains/info on click.
+ * Lightweight positioned train — returned on every poll.
+ * Real GPS position, speed, and heading from the Virtual Train API.
  */
 export interface PositionedTrain {
-  id: string           // ritId from Virtual Train API
+  id: string
   serviceNumber: string
   lat: number
   lng: number
   speedKmh: number
-  heading: number      // degrees 0-360 (0=N, 90=E, 180=S, 270=W)
-  accuracy: number     // GPS accuracy metres
-  typeCode: string     // SPR, IC, ICE, etc.
+  heading: number
+  accuracy: number
+  typeCode: string
   operator: string
   destination: string
   origin: string
@@ -26,7 +26,6 @@ export interface PositionedTrain {
   cancelled: boolean
   platform: string
   via: string
-  /** Material part numbers from GPS layer */
   materieelNummers: number[]
 }
 
@@ -36,25 +35,30 @@ function normaliseType(raw?: string): string {
   if (!raw) return ''
   const u = raw.toUpperCase().trim()
   const MAP: Record<string, string> = {
-    // NS
     SPRINTER: 'SPR', INTERCITY: 'IC', 'INTERCITY DIRECT': 'ICD',
     'INTERCITY-DIRECT': 'ICD', INTERCITYEXPRESS: 'ICE', 'INTER CITY EXPRESS': 'ICE',
     THALYS: 'THA', EUROSTAR: 'EUR', INTERNATIONAL: 'INT', NACHTTREIN: 'NT',
-    // RNet / regionale operators
     'R-NET': 'RNT', RNET: 'RNT', 'R NET': 'RNT',
     VALLEILIJN: 'VLL', 'VALLEI LIJN': 'VLL',
-    // Arriva
-    ARRIVA: 'ARR', 'STOPTREIN': 'STP',
-    // Diverse andere
+    ARRIVA: 'ARR', STOPTREIN: 'STP',
     LIGHTRAIL: 'LR', 'LIGHT RAIL': 'LR',
     FLIRT: 'FLI', FLIRT3: 'FLI',
-    GTW: 'GTW',
-    ICM: 'ICM',
-    SNG: 'SPR', // SNG is een Sprinter
-    // DB
-    'INTERCITY EXPRESS': 'ICE',
+    SNG: 'SPR', SNG3: 'SPR', SNG4: 'SPR',
+    VIRM: 'IC', VIRM4: 'IC', VIRM6: 'IC',
+    ICM: 'IC', DDZ: 'SPR',
   }
-  return MAP[u] ?? u.slice(0, 4) // cap at 4 chars for display
+  const normalised = u.replace(/\s+/g, '')
+  if (MAP[normalised]) return MAP[normalised]
+  if (MAP[u]) return MAP[u]
+  if (u.startsWith('ICE')) return 'ICE'
+  if (u.startsWith('SNG')) return 'SPR'
+  if (u.startsWith('VIRM')) return 'IC'
+  if (u.startsWith('ICM')) return 'IC'
+  if (u.startsWith('DDZ')) return 'SPR'
+  if (u.startsWith('FLIRT')) return 'SPR'
+  if (u.startsWith('GTW')) return 'GTW'
+  if (u.startsWith('TALENT')) return 'SPR'
+  return u.slice(0, 4)
 }
 
 // ─── Route handler ────────────────────────────────────────────────────────────
@@ -62,9 +66,9 @@ function normaliseType(raw?: string): string {
 export async function GET() {
   try {
     const now = new Date()
+    const nowMs = now.getTime()
 
-    // Check cache first
-    if (positionsCache && (now.getTime() - positionsCache.timestamp) < CACHE_TTL) {
+    if (positionsCache && nowMs - positionsCache.timestamp < CACHE_TTL) {
       return NextResponse.json(positionsCache.data)
     }
 
@@ -74,28 +78,25 @@ export async function GET() {
       return NextResponse.json({ trains: [], count: 0, source: 'virtual-train-api-empty' })
     }
 
-    // ── 2. Supabase departure data for metadata (delay, destination, operator) ─
+    // ── Supabase departure data for metadata (delay, destination, operator) ───
     const { data: departures } = await supabase
       .from('train_departures')
       .select('service_number, station_code, origin, destination, destination_actual, type_code, operator, delay, cancelled, platform, via')
-      .gte('updated_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+      .gte('updated_at', new Date(nowMs - 5 * 60 * 1000).toISOString())
 
-    // Index by service_number for fast lookup
-    const depByNumber = new Map<string, typeof departures extends (infer T)[] | null ? T : never>()
+    const depByNumber = new Map<string, NonNullable<typeof departures>[number]>()
     for (const d of departures ?? []) {
       if (!depByNumber.has(d.service_number)) depByNumber.set(d.service_number, d)
     }
 
-    // ── 3. Build positioned trains ────────────────────────────────────────────
+    // ── Build positioned trains ───────────────────────────────────────────────
     const trains: PositionedTrain[] = vehicles
       .filter(v => v.lat && v.lng)
       .map(v => {
-        // ritId may be "9049" or "9049-2" — normalise to just the number
         const ritId     = v.ritId?.replace(/\s/g, '') ?? ''
         const numericId = ritId.split('-')[0].split('_')[0]
-
-        const dep = depByNumber.get(numericId) ?? depByNumber.get(ritId)
-        const typeCode = normaliseType(v.type) || dep?.type_code || ''
+        const dep       = depByNumber.get(numericId) ?? depByNumber.get(ritId)
+        const typeCode  = normaliseType(v.type) || dep?.type_code || ''
 
         return {
           id:              ritId,
@@ -119,14 +120,12 @@ export async function GET() {
 
     const result = {
       trains,
-      count: trains.length,
+      count:     trains.length,
       updatedAt: now.toISOString(),
-      source: 'virtual-train-api',
+      source:    'virtual-train-api',
     }
 
-    // Cache the result
-    positionsCache = { data: result, timestamp: now.getTime() }
-
+    positionsCache = { data: result, timestamp: nowMs }
     return NextResponse.json(result)
   } catch (err) {
     console.error('[positions]', err)

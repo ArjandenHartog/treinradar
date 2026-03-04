@@ -246,6 +246,33 @@ export interface NSTrein {
   type?: string            // e.g. "SPR", "IC", "Sprinter", "Intercity"
   materieel?: number[]     // material part numbers (e.g. [2010, 2011])
   treinCloneWithMaterieel?: NSTrein
+  treininformatie?: NSTrainInformation
+}
+
+export interface NSTrainInformation {
+  ritnummer?: number
+  station?: string
+  type?: string
+  vervoerder?: string
+  materieelDelen?: NSMaterieelDeelInfo[]
+  treinDelen?: NSMaterieelDeelInfo[]
+  lengte?: number
+  lengteInMeters?: number
+  [key: string]: unknown
+}
+
+/** Train info organized by station - returned by /trein endpoint */
+export interface TrainInfoByStation {
+  [stationCode: string]: {
+    [treinNummer: string]: {
+      stationCode: string
+      treinnummer: number
+      treindelen: NSMaterieelDeelInfo[]
+      vervoerder?: string
+      lengteInMeters?: number
+      [key: string]: unknown
+    }
+  }
 }
 
 /** Get all active vehicles with real GPS positions */
@@ -261,10 +288,43 @@ export async function getVehicles(opts?: {
     if (opts?.limit != null)  p.set('limit',    String(opts.limit))
     if (opts?.features)       p.set('features', opts.features)
     const qs = p.toString()
-    const data = await vtGet<{ payload: { treinen: NSTrein[] } }>(`/vehicle${qs ? '?' + qs : ''}`)
+    const data = await vtGet<{ payload: { treinen: NSTrein[] } }>(`/api/vehicle${qs ? '?' + qs : ''}`)
     return data.payload?.treinen ?? []
   } catch {
     return []
+  }
+}
+
+/** Get train information with materieel details from /trein endpoint */
+export async function getTrainInfo(): Promise<TrainInfoByStation> {
+  try {
+    const data = await vtGet<Record<string, unknown>>(`/v1/trein?all=true`)
+    return data as TrainInfoByStation
+  } catch {
+    return {}
+  }
+}
+
+/** One station entry inside the VT /trein flat response */
+export interface VTStationEntry {
+  stationCode: string
+  dienstregelingDag: string
+  vertrektijd: string  // ISO datetime
+  treinnummer: number
+  spoor?: string
+  treindelen: Array<{ materieelNummer: number; vervoerder: string; lengteInMeters?: number; type: string }>
+  bron?: string
+}
+
+/** Full /trein response: { [trainNumber]: { [stationCode]: VTStationEntry } } */
+export type VTTrainData = Record<string, Record<string, VTStationEntry>>
+
+/** Get all active train schedule/composition data from VT API */
+export async function getTrainSchedule(): Promise<VTTrainData> {
+  try {
+    return await vtGet<VTTrainData>('/v1/trein')
+  } catch {
+    return {}
   }
 }
 
@@ -272,6 +332,7 @@ export async function getVehicles(opts?: {
 export interface NSMaterieelDeelInfo {
   materieelNummer?: number
   type?: string            // SNG, VIRM, SLT, ICM, etc.
+  vervoerder?: string
   eindbestemming?: string
   ingekort?: boolean
   zitplaatsen?: {
@@ -282,30 +343,85 @@ export interface NSMaterieelDeelInfo {
   afbeelding?: string      // NS image URL if available
   lengteInMeters?: number
   bakken?: number          // number of carriages
+  zitplaatsInfo?: {
+    zitplaatsEersteKlas: number
+    zitplaatsTweedeKlas: number
+  }
 }
 
 export interface NSTrainInformation {
+  ritnummer?: number
   ritId?: string
+  station?: string
   type?: string
-  eindbestemming?: string
+  vervoerder?: string
   materieelDelen?: NSMaterieelDeelInfo[]
-  // Some NS API versions wrap in different keys
-  trainParts?: NSMaterieelDeelInfo[]
-  [key: string]: unknown
+  treinDelen?: NSMaterieelDeelInfo[]
+  lengte?: number
+  lengteInMeters?: number
+  bron?: string
 }
 
 export async function getTrainInformationForRitnummer(ritnummer: string): Promise<NSTrainInformation | null> {
   try {
-    // Try the two URL patterns NS uses
-    const data = await vtGet<NSTrainInformation>(`/trainInformation?ritnummer=${ritnummer}`)
-    return data
+    const data = await vtGet<NSTrainInformation>(`/v1/trein?ids=${ritnummer}`)
+    return data as NSTrainInformation
   } catch {
-    try {
-      const data = await vtGet<NSTrainInformation>(`/trainInformation/${ritnummer}`)
-      return data
-    } catch {
-      return null
-    }
+    return null
+  }
+}
+
+// ─── Disruptions per station ──────────────────────────────────────────────────
+
+const DISRUPTIONS_BASE = 'https://gateway.apiportal.ns.nl/disruptions'
+
+export interface NSStationDisruption {
+  id: string
+  type: 'CALAMITY' | 'DISRUPTION' | 'MAINTENANCE' | string
+  isActive: boolean
+  title: string
+  topic?: string
+}
+
+export async function getStationDisruptions(stationCode: string): Promise<NSStationDisruption[]> {
+  try {
+    const res = await fetch(`${DISRUPTIONS_BASE}/v3/station/${stationCode}`, {
+      headers: { 'Ocp-Apim-Subscription-Key': NS_KEY, 'Accept': 'application/json' },
+      next: { revalidate: 0 },
+      signal: AbortSignal.timeout(6000),
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data) ? data : []
+  } catch {
+    return []
+  }
+}
+
+// ─── SpoorKaart – disruption GeoJSON ─────────────────────────────────────────
+
+const SPOORKAART_BASE = 'https://gateway.apiportal.ns.nl/Spoorkaart-API'
+
+export interface SpoorkaartFeature {
+  type: 'Feature'
+  id?: string
+  properties: Record<string, unknown>
+  geometry: { type: string; coordinates: unknown[] } | null
+}
+
+export async function getDisruptionGeoJSON(id: string): Promise<SpoorkaartFeature[]> {
+  try {
+    const res = await fetch(`${SPOORKAART_BASE}/api/v1/storingen/${id}`, {
+      headers: { 'Ocp-Apim-Subscription-Key': NS_KEY, 'Accept': 'application/json' },
+      next: { revalidate: 0 },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!res.ok) return []
+    // Response is { payload: { type: 'FeatureCollection', features: [...] } }
+    const data = await res.json() as { payload?: { features?: SpoorkaartFeature[] }; features?: SpoorkaartFeature[] }
+    return data.payload?.features ?? data.features ?? []
+  } catch {
+    return []
   }
 }
 
