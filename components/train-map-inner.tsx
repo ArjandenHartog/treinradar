@@ -197,8 +197,32 @@ function TrainDetailPanel({ train, onClose, onStationClick, onStopsLoaded }: {
         setDetail(d)
         setLoading(false)
         if (d?.stops && onStopsLoaded) {
-          const coords = d.stops.filter(s => s.lat && s.lng).map(s => [s.lat!, s.lng!] as [number, number])
-          if (coords.length > 1) onStopsLoaded(coords)
+          // Build route with ALL stops and request real routing
+          const stopsWithCoords = d.stops
+            .filter(s => s.lat && s.lng)
+            .map(s => ({ lat: s.lat!, lng: s.lng!, name: s.name }))
+          
+          if (stopsWithCoords.length > 1) {
+            // Request real route tracing via OpenRouteService
+            fetch('/api/trains/route', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ stops: stopsWithCoords }),
+            })
+              .then(r => r.ok ? r.json() : null)
+              .then((routeData: { coordinates: Array<[number, number]> } | null) => {
+                if (routeData?.coordinates) {
+                  // Convert [lng, lat] to [lat, lng] for Leaflet
+                  const coords = routeData.coordinates.map(c => [c[1], c[0]] as [number, number])
+                  onStopsLoaded(coords)
+                }
+              })
+              .catch(() => {
+                // Fallback to direct stops if routing fails
+                const coords = stopsWithCoords.map(s => [s.lat, s.lng] as [number, number])
+                onStopsLoaded(coords)
+              })
+          }
         }
       })
       .catch(() => setLoading(false))
@@ -911,10 +935,18 @@ export default function TrainMapInner({ stations, trains }: Props) {
 
         {/* Route line */}
         {selected && routeStops.length > 1 && (
-          <Polyline
-            positions={routeStops}
-            pathOptions={{ color: '#3b82f6', weight: 2.5, opacity: 0.55, dashArray: '6 5' }}
-          />
+          <>
+            {/* White glow effect for contrast */}
+            <Polyline
+              positions={routeStops}
+              pathOptions={{ color: '#ffffff', weight: 5, opacity: 0.3 }}
+            />
+            {/* Main bright blue line */}
+            <Polyline
+              positions={routeStops}
+              pathOptions={{ color: '#1d4ed8', weight: 3, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }}
+            />
+          </>
         )}
       </MapContainer>
 

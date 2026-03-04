@@ -38,39 +38,44 @@ export interface TrainStats {
 
 export async function GET() {
   try {
-    // Active trains - updated in last 5 minutes
+    // Active trains - distinct service_numbers updated in last 5 minutes
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    
     const { data: recentDepartures, error } = await supabase
       .from('train_departures')
       .select('service_number, operator, delay, cancelled, destination, station_code, departure_time, updated_at')
-      .gte('updated_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+      .gte('updated_at', fiveMinutesAgo)
+      .order('updated_at', { ascending: false })
 
     if (error) throw error
 
     // Deduplicate recent by service_number (latest record wins)
     const recentByService = new Map<string, Departure>()
     for (const d of (recentDepartures ?? [])) {
-      if (!recentByService.has(d.service_number) ||
-        new Date(d.updated_at) > new Date(recentByService.get(d.service_number)!.updated_at)) {
+      if (!recentByService.has(d.service_number)) {
         recentByService.set(d.service_number, d)
       }
     }
 
     const activeTrains = Array.from(recentByService.values())
 
-    // Total today - all unique trains since start of today
+    // Total today - all DISTINCT unique trains since start of today (per service_number)
+    // Filter to only count trains that actually departed today (not future planned trains)
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
+    const now = new Date()
 
     const { data: todayDepartures } = await supabase
       .from('train_departures')
       .select('service_number, operator, delay, cancelled, destination, station_code, departure_time, updated_at')
       .gte('updated_at', todayStart.toISOString())
+      .lt('departure_time', now.toISOString()) // Only count trains that have actually departed
+      .order('service_number, updated_at', { ascending: [true, false] })
 
-    // Deduplicate by service_number for today's total
+    // Deduplicate by service_number for today's total (keep latest by updated_at for each service)
     const todayByService = new Map<string, Departure>()
     for (const d of (todayDepartures ?? [])) {
-      if (!todayByService.has(d.service_number) ||
-        new Date(d.updated_at) > new Date(todayByService.get(d.service_number)!.updated_at)) {
+      if (!todayByService.has(d.service_number)) {
         todayByService.set(d.service_number, d)
       }
     }
