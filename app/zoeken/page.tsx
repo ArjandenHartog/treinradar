@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Header } from '@/components/header'
 import {
@@ -129,7 +129,7 @@ function ResultCard({ result, query }: { result: SearchResult; query: string }) 
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export default function ZoekenPage() {
+function ZoekenPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -258,5 +258,13 @@ export default function ZoekenPage() {
 
       </main>
     </div>
+  )
+}
+
+export default function ZoekenPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-zinc-950" />}>
+      <ZoekenPageInner />
+    </Suspense>
   )
 }
