@@ -118,8 +118,16 @@ export async function GET() {
         } satisfies PositionedTrain
       })
 
+    // ── Deduplicate by serviceNumber (VT API returns 1 entry per physical unit) ─
+    const seenService = new Set<string>()
+    const uniqueTrains = trains.filter(t => {
+      if (seenService.has(t.serviceNumber)) return false
+      seenService.add(t.serviceNumber)
+      return true
+    })
+
     // ── Fetch destinations from NS API for trains missing them ──────────────
-    const missingDestTrain = trains.filter(t => !t.destination)
+    const missingDestTrain = uniqueTrains.filter(t => !t.destination)
     if (missingDestTrain.length > 0) {
       const destResults = await Promise.allSettled(
         missingDestTrain.map(t => getTrainDestination(t.serviceNumber))
@@ -128,7 +136,7 @@ export async function GET() {
       destResults.forEach((result, idx) => {
         if (result.status === 'fulfilled' && result.value) {
           const train = missingDestTrain[idx]
-          const trainInList = trains.find(t => t.serviceNumber === train.serviceNumber)
+          const trainInList = uniqueTrains.find(t => t.serviceNumber === train.serviceNumber)
           if (trainInList && !trainInList.destination) {
             trainInList.destination = result.value
           }
@@ -137,8 +145,8 @@ export async function GET() {
     }
 
     const result = {
-      trains,
-      count:     trains.length,
+      trains: uniqueTrains,
+      count:  uniqueTrains.length,
       updatedAt: now.toISOString(),
       source:    'virtual-train-api',
     }

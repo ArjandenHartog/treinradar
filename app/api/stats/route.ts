@@ -46,6 +46,7 @@ export async function GET() {
       .select('service_number, operator, delay, cancelled, destination, station_code, departure_time, updated_at')
       .gte('updated_at', fiveMinutesAgo)
       .order('updated_at', { ascending: false })
+      .limit(5000)
 
     if (error) throw error
 
@@ -72,6 +73,7 @@ export async function GET() {
       .lt('departure_time', now.toISOString()) // Only count trains that have actually departed
       .order('service_number', { ascending: true })
       .order('updated_at', { ascending: false })
+      .limit(5000)
 
     // Deduplicate by service_number for today's total (keep latest by updated_at for each service)
     const todayByService = new Map<string, Departure>()
