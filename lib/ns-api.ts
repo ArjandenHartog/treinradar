@@ -363,15 +363,6 @@ export interface NSTrainInformation {
   bron?: string
 }
 
-export async function getTrainInformationForRitnummer(ritnummer: string): Promise<NSTrainInformation | null> {
-  try {
-    const data = await vtGet<NSTrainInformation>(`/v1/trein?ids=${ritnummer}`)
-    return data as NSTrainInformation
-  } catch {
-    return null
-  }
-}
-
 // ─── Disruptions per station ──────────────────────────────────────────────────
 
 const DISRUPTIONS_BASE = 'https://gateway.apiportal.ns.nl/disruptions'

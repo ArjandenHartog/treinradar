@@ -54,6 +54,24 @@ export interface TrainDetail {
 const infoCache = new Map<string, { data: TrainDetail; ts: number }>()
 const CACHE_TTL = 90_000 // 90 seconden — stops en vertraging veranderen frequent
 
+// ─── Image URI → material type code ──────────────────────────────────────────
+// NS image filenames encode the exact type, e.g. virmm1_6.png, rnet_flirt_2.png
+const IMAGE_TYPE_MAP: Record<string, string> = {
+  sng: 'SNG', slt: 'SLT', virm: 'VIRM', virmm1: 'VIRMM1', virmm2: 'VIRMM2',
+  icm: 'ICM', icmm1: 'ICM', ddz: 'DDZ',
+  icng: 'ICNG', icng_b: 'ICNG',
+  nsr_flirt: 'FLIRT', rnet_flirt: 'FLIRT',
+  sgm: 'SGM', talent: 'TALENT',
+}
+
+function typeFromImageUri(uri: string | null | undefined): string | null {
+  if (!uri) return null
+  // Extract filename without extension and trailing _N (e.g. "virmm1_6" → "virmm1")
+  const filename = uri.split('/').pop() ?? ''
+  const base = filename.replace(/\.png$/i, '').replace(/_\d+$/, '').toLowerCase()
+  return IMAGE_TYPE_MAP[base] ?? null
+}
+
 // ─── Facility mapping ─────────────────────────────────────────────────────────
 
 function mapFacilities(raw: string[]): Facility[] {
@@ -65,7 +83,7 @@ function mapFacilities(raw: string[]): Facility[] {
     if (u === 'TOILET' || u === 'WC')               return 'toilet'
     if (u === 'TOEGANKELIJK' || u.includes('ACCESS')) return 'toegankelijk'
     if (u === 'RESTAURANT' || u === 'BISTRO' || u === 'RESTAURATIE') return 'restaurant'
-    if (u.includes('STILLE') || u.includes('QUIET')) return 'stille-coupe'
+    if (u.includes('STILLE') || u.includes('STILTE') || u.includes('QUIET')) return 'stille-coupe'
     if (u === 'AIRCO' || u.includes('AIRCO') || u.includes('CLIMATE')) return 'airco'
     return null
   }).filter((f): f is Facility => f !== null)
@@ -165,8 +183,9 @@ export async function GET(req: NextRequest) {
   const facilities = mapFacilities(rawFac)
   const numParts   = stockData?.numberOfParts ?? null
   const totalSeats = stockData?.numberOfSeats ?? null
-  // materialType (per-part) takes priority over top-level trainType
-  const trainType  = firstPart?.materialType ?? stockData?.trainType ?? null
+  // Priority: per-part materialType > image URI type > top-level trainType
+  // Image URI encodes exact type (e.g. virmm1_6.png → VIRMM1) — most reliable for variants
+  const trainType  = firstPart?.materialType ?? typeFromImageUri(imageUri) ?? stockData?.trainType ?? null
 
   // Build train parts from journey API; fall back to VT API materieel numbers for "0" identifiers
   let trainParts = stockData?.trainParts?.map(p => {

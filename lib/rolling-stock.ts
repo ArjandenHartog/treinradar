@@ -377,9 +377,12 @@ function normalise(raw: string): string {
     'ICNGB':          'ICNG',
     'ICNG-B':         'ICNG',
     'ICNGBATTERIJ':   'ICNG',
-    // FLIRT varianten voor NS (2, 3, 4 parts)
+    // FLIRT varianten voor NS en R-Net (2, 3, 4 parts)
     'NSRFLIRT':       'FLIRT',
     'NSRFLIRT3':      'FLIRT',
+    'RNETFLIRT':      'FLIRT',
+    'RNETFLIRT2':     'FLIRT',
+    'RNETFLIRT3':     'FLIRT',
     'FLIRT2':         'FLIRT',
     'FLIRT3':         'FLIRT',
     'FLIRT4':         'FLIRT',
