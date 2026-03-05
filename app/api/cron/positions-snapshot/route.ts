@@ -57,15 +57,20 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    // Fetch destinations via NS journey API for trains still missing one (max 40)
-    const missingDest = trainRows.filter(r => !r.destination).slice(0, 40)
+    // Fetch destinations via NS journey API for trains still missing one
+    // Limit concurrency to 10 at a time to avoid NS rate limiting
+    const missingDest = trainRows.filter(r => !r.destination).slice(0, 60)
     if (missingDest.length > 0) {
-      const results = await Promise.allSettled(missingDest.map(r => getTrainDestination(r.ritId)))
-      results.forEach((res, i) => {
-        if (res.status === 'fulfilled' && res.value) {
-          missingDest[i].destination = res.value
-        }
-      })
+      const CONC = 10
+      for (let i = 0; i < missingDest.length; i += CONC) {
+        const batch = missingDest.slice(i, i + CONC)
+        const results = await Promise.allSettled(batch.map(r => getTrainDestination(r.ritId)))
+        results.forEach((res, j) => {
+          if (res.status === 'fulfilled' && res.value) {
+            batch[j].destination = res.value
+          }
+        })
+      }
     }
 
     // Strip helper field before insert

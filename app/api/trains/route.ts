@@ -22,7 +22,8 @@ const MAJOR_STATIONS = [
   'BD',   // Breda
   'HRL',  // Heerenveen
   'DV',   // Deventer
-  'DT',   // Dordrecht
+  'DT',   // Delft (NB: Dordrecht = DDR)
+  'DDR',  // Dordrecht
   'BTL',  // Barendrecht
   'TBU',  // Tilburg
   'WD',   // Woerden
@@ -30,15 +31,26 @@ const MAJOR_STATIONS = [
   'ASDL', // Amsterdam Lelylaan
   'ASRA', // Amsterdam RAI
   'HVS',  // Hilversum
-  'MN',   // Middelburg (Arriva)
-  'VLIS', // Vlissingen
+  'MDB',  // Middelburg (Arriva) — was 'MN' (wrong code)
+  'VS',   // Vlissingen — was 'VLIS' (wrong code)
   'GST',  // Goes (Arriva)
   // Overige grote stations
   'ASS',  // Amsterdam Sloterdijk
   'LLS',  // Lelystad Centrum
   'APD',  // Apeldoorn
   'SHL',  // Schiphol Airport
-  'ZL',   // Zoetermeer (? / Den Haag regio)
+  'LEDN', // Leiden Centraal (groot knooppunt)
+  'RSD',  // Roosendaal (grensstation)
+  'BGN',  // Bergen op Zoom
+  // Utrecht–Rhenen corridor (sprinter 7373-lijn en soortgelijke)
+  'UTZL', // Utrecht Zuilen
+  'UTVR', // Utrecht Vaartsche Rijn
+  'BNK',  // Bunnik
+  'DB',   // Driebergen-Zeist
+  'MRN',  // Maarn
+  'VNDW', // Veenendaal West
+  'VNDC', // Veenendaal Centrum
+  'RHN',  // Rhenen
   // Valleilijn stations (EBS/R-net) — codes geverifieerd via NS stations API
   'ED',   // Ede-Wageningen (hoofdspoor, ook Valleilijn eindpunt)
   'EDC',  // Ede Centrum (Valleilijn specifiek)

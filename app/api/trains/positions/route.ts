@@ -29,8 +29,6 @@ export interface PositionedTrain {
   materieelNummers: number[]
 }
 
-// ─── Helper: fetch destination from NS API journey ────────────────────────
-
 // ─── Normalise type string from VT API ───────────────────────────────────────
 
 function normaliseType(raw?: string): string {

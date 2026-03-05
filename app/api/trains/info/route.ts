@@ -167,10 +167,6 @@ export async function GET(req: NextRequest) {
   const totalSeats = stockData?.numberOfSeats ?? null
   // materialType (per-part) takes priority over top-level trainType
   const trainType  = firstPart?.materialType ?? stockData?.trainType ?? null
-  // Filter out invalid stock identifiers ("0", "")
-  const stockIds   = stockData?.trainParts
-    ?.map(p => p.stockIdentifier ?? '')
-    .filter(id => id && id !== '0') ?? []
 
   // Build train parts from journey API; fall back to VT API materieel numbers for "0" identifiers
   let trainParts = stockData?.trainParts?.map(p => {

@@ -69,19 +69,26 @@ export async function GET(
     recordedAt:  r.recorded_at,
   }))
 
-  const speeds = history.map(h => h.speedKmh)
-  const delays = history.map(h => h.delay)
+  // Speed stats: only records where the train was actually moving (exclude stops/OBIS zeros)
+  const movingSpeeds = history.map(h => h.speedKmh).filter(s => s > 0)
+  const delays       = history.map(h => h.delay)
   const destinations = [...new Set(history.map(h => h.destination).filter(Boolean))]
+
+  // Use most recent non-null value for type_code / operator (old records may have null)
+  const lastWithType = [...data].reverse().find(r => r.type_code)
+  const lastWithOp   = [...data].reverse().find(r => r.operator)
 
   const stats: TrainHistoryStats = {
     serviceNumber,
-    typeCode:           data[data.length - 1]?.type_code ?? '',
-    operator:           data[data.length - 1]?.operator ?? 'NS',
+    typeCode:           lastWithType?.type_code ?? '',
+    operator:           lastWithOp?.operator ?? 'NS',
     totalPoints:        history.length,
     firstSeen:          history[0].recordedAt,
     lastSeen:           history[history.length - 1].recordedAt,
-    maxSpeedKmh:        Math.max(...speeds),
-    avgSpeedKmh:        Math.round(speeds.reduce((a, b) => a + b, 0) / speeds.length),
+    maxSpeedKmh:        movingSpeeds.length ? Math.max(...movingSpeeds) : 0,
+    avgSpeedKmh:        movingSpeeds.length
+                          ? Math.round(movingSpeeds.reduce((a, b) => a + b, 0) / movingSpeeds.length)
+                          : 0,
     avgDelay:           Math.round(delays.reduce((a, b) => a + b, 0) / delays.length),
     maxDelay:           Math.max(...delays),
     cancelledCount:     history.filter(h => h.cancelled).length,
