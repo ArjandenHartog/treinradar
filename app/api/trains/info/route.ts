@@ -124,11 +124,15 @@ async function getBelgianDetail(serviceNumber: string): Promise<TrainDetail> {
       const passTime = actualDep ?? plannedDep ?? actualArr ?? plannedArr
       const passed   = s.left === '1' || (passTime ? new Date(passTime) < now : false)
 
+      const stationInfo = typeof s.stationinfo === 'string' 
+        ? JSON.parse(s.stationinfo) 
+        : s.stationinfo
+      
       return {
         name:             s.station ?? '',
         uicCode:          '',
-        lat:              parseFloat(s.stationinfo?.locationY ?? '0') || null,
-        lng:              parseFloat(s.stationinfo?.locationX ?? '0') || null,
+        lat:              parseFloat(stationInfo?.locationY ?? '0') || null,
+        lng:              parseFloat(stationInfo?.locationX ?? '0') || null,
         plannedDeparture: idx < stopsArr.length - 1 ? plannedDep : null,
         actualDeparture:  idx < stopsArr.length - 1 ? actualDep  : null,
         plannedArrival:   idx > 0 ? plannedArr : null,

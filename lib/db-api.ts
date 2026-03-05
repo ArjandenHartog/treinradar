@@ -2,8 +2,9 @@
  * Deutsche Bahn API client — via transport.rest (community HAFAS wrapper)
  * https://v6.db.transport.rest/  —  no API key required
  *
- * Uses the /radar endpoint: one bbox call returns ALL running trains
- * in Germany with live GPS positions — no per-station polling needed.
+ * NOTE: The /radar endpoint was removed in v6 API. German train positions are
+ * temporarily unavailable until an alternative data source is found.
+ * Currently returns empty array to prevent API failures.
  */
 
 const DB_BASE = 'https://v6.db.transport.rest'
@@ -172,75 +173,14 @@ export interface GermanTrain {
  * Use this in the positions route so Germany never blocks the NS response.
  */
 export function getGermanPositionsImmediate(): GermanTrain[] {
-  const now = Date.now()
-  if (!positionsCache || now - positionsCache.ts >= POSITIONS_TTL) {
-    getGermanPositions().catch(() => {})
-  }
-  return positionsCache?.data ?? []
+  // TEMPORARY: German radar endpoint removed from transport.rest v6 API
+  // TODO: Find alternative data source for German train positions
+  return []
 }
 
 export async function getGermanPositions(): Promise<GermanTrain[]> {
-  const now = Date.now()
-  if (positionsCache && now - positionsCache.ts < POSITIONS_TTL) {
-    return positionsCache.data
-  }
-
-  try {
-    // Single bbox call — returns all running trains in Germany with live positions
-    const data = await dbFetch<DBRadarResponse>('/radar', {
-      ...BBOX,
-      results:          '512',   // max vehicles
-      duration:         '2',     // 2-minute lookahead for heading calc
-      frames:           '2',     // current + 2-min-future position → heading
-      nationalExpress:  'true',
-      national:         'true',
-      regional:         'true',
-      regionalExp:      'true',
-      suburban:         'false',  // S-Bahn: too many local trains
-      subway:           'false',
-      bus:              'false',
-      ferry:            'false',
-      tram:             'false',
-    })
-
-    const movements = data?.movements ?? []
-    const trains: GermanTrain[] = []
-
-    for (const m of movements) {
-      if (!m.location || !m.tripId) continue
-
-      const lineName     = m.line?.name    ?? ''
-      const product      = m.line?.product ?? ''
-      const typeCode     = normaliseDbType(product, lineName)
-      const serviceNumber = lineName.replace(/\s+/g, '') || m.tripId.split('|')[0]
-      const heading      = headingFromFrames(m.frames)
-      const delayMin     = m.delay != null ? Math.round(m.delay / 60) : 0
-
-      activeTripIds.set(serviceNumber, m.tripId)
-
-      trains.push({
-        id:              `DE_${serviceNumber}_${m.tripId.slice(-6)}`,
-        serviceNumber,
-        lat:             m.location.latitude,
-        lng:             m.location.longitude,
-        speedKmh:        0,
-        heading,
-        accuracy:        50,   // radar gives better accuracy than interpolation
-        typeCode,
-        operator:        m.line?.operator?.name ?? 'DB',
-        destination:     m.direction ?? '',
-        origin:          '',
-        delay:           delayMin,
-        cancelled:       false,
-        platform:        '',
-        via:             '',
-        materieelNummers: [],
-      })
-    }
-
-    positionsCache = { data: trains, ts: now }
-    return trains
-  } catch {
-    return positionsCache?.data ?? []
-  }
+  // TEMPORARY: German radar endpoint removed from transport.rest v6 API
+  // TODO: Find alternative data source for German train positions
+  // For now, return empty array to prevent API failures
+  return []
 }
