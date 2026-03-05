@@ -426,6 +426,32 @@ export async function getDisruptionGeoJSON(id: string): Promise<SpoorkaartFeatur
   }
 }
 
+// ─── Cached destination lookup (shared across routes in the same process) ────
+
+const _destCache = new Map<string, { destination: string; ts: number }>()
+const DEST_CACHE_TTL = 5 * 60 * 1000 // 5 min
+
+/**
+ * Returns the final destination name for a train by reading the last stop of
+ * the NS journey API. Results are cached per process instance for 5 minutes.
+ */
+export async function getTrainDestination(serviceNumber: string): Promise<string> {
+  const hit = _destCache.get(serviceNumber)
+  if (hit && Date.now() - hit.ts < DEST_CACHE_TTL) return hit.destination
+
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const payload = await getJourneyPayload(serviceNumber, today)
+    const stops = payload.stops ?? []
+    const lastStop = stops[stops.length - 1]
+    const destination = lastStop?.stop?.name ?? ''
+    if (destination) _destCache.set(serviceNumber, { destination, ts: Date.now() })
+    return destination
+  } catch {
+    return ''
+  }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function getDelayMinutes(planned: string, actual: string): number {

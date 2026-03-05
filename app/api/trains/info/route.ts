@@ -106,8 +106,20 @@ export async function GET(req: NextRequest) {
     return null
   }
 
-  // ── Fetch journey payload ─────────────────────────────────────────────────
-  const journeyPayload = await getJourneyPayload(ritnummer, today)
+  // ── Fetch journey payload + most recent position history in parallel ──────
+  const [journeyPayload, { data: recentHistory }] = await Promise.all([
+    getJourneyPayload(ritnummer, today),
+    supabase
+      .from('train_position_history')
+      .select('materieel_nummers, type_code')
+      .eq('service_number', ritnummer)
+      .not('materieel_nummers', 'is', null)
+      .order('recorded_at', { ascending: false })
+      .limit(1),
+  ])
+
+  // Materieel numbers from VT API (stored by cron) — more reliable than journey API "0"
+  const historicMaterieelNummers: number[] = recentHistory?.[0]?.materieel_nummers ?? []
 
   // ── Build stop list ───────────────────────────────────────────────────────
   const stops: StopInfo[] = journeyPayload.stops.map(s => {
@@ -160,7 +172,8 @@ export async function GET(req: NextRequest) {
     ?.map(p => p.stockIdentifier ?? '')
     .filter(id => id && id !== '0') ?? []
 
-  const trainParts = stockData?.trainParts?.map(p => {
+  // Build train parts from journey API; fall back to VT API materieel numbers for "0" identifiers
+  let trainParts = stockData?.trainParts?.map(p => {
     const num = p.stockIdentifier && p.stockIdentifier !== '0' ? p.stockIdentifier : ''
     return {
       number: num,
@@ -168,6 +181,17 @@ export async function GET(req: NextRequest) {
       facilities: p.facilities ?? [],
     }
   }) ?? []
+
+  // If journey API gave us only "0" identifiers, enrich with VT API numbers from position history
+  if (trainParts.length > 0 && trainParts.every(p => !p.number) && historicMaterieelNummers.length > 0) {
+    trainParts = historicMaterieelNummers.map(n => ({
+      number: String(n),
+      type: trainType,
+      facilities: [],
+    }))
+  }
+
+  const effectiveStockIds = trainParts.map(p => p.number).filter(Boolean)
 
   let material: MaterialInfo | null = null
 
@@ -188,8 +212,8 @@ export async function GET(req: NextRequest) {
         facilityLabels: mergedFac.map(f => ({ key: f, ...FACILITY_LABEL[f] })),
         allowBikes:    mergedFac.includes('fiets'),
         totalSeats,
-        stockIdentifiers: stockIds,
-        parts: trainParts.length > 0 ? trainParts : stockIds.map(n => ({ number: n, type: trainType, facilities: [] })),
+        stockIdentifiers: effectiveStockIds,
+        parts: trainParts,
       }
     } else if (imageUri) {
       // We have an image but no static DB entry — build minimal material
@@ -206,8 +230,8 @@ export async function GET(req: NextRequest) {
         facilityLabels: facilities.map(f => ({ key: f, ...FACILITY_LABEL[f] })),
         allowBikes:    facilities.includes('fiets'),
         totalSeats,
-        stockIdentifiers: stockIds,
-        parts: trainParts.length > 0 ? trainParts : stockIds.map(n => ({ number: n, type: trainType, facilities: [] })),
+        stockIdentifiers: effectiveStockIds,
+        parts: trainParts,
       }
     }
   }

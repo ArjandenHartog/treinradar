@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server'
-import { getVehicles, getJourneyPayload } from '@/lib/ns-api'
+import { getVehicles, getTrainDestination } from '@/lib/ns-api'
 import { supabase } from '@/lib/supabase'
 
 // ─── In-memory cache (500ms TTL for smooth real-time updates) ─────────────────
 let positionsCache: { data: unknown; timestamp: number } | null = null
 const CACHE_TTL = 2_000
-
-// ─── Journey cache (5min TTL to avoid hammering NS API) ─────────────────────
-const journeyCache = new Map<string, { destination: string; ts: number }>()
-const JOURNEY_CACHE_TTL = 5 * 60 * 1000
 
 /**
  * Lightweight positioned train — returned on every poll.
@@ -34,28 +30,6 @@ export interface PositionedTrain {
 }
 
 // ─── Helper: fetch destination from NS API journey ────────────────────────
-
-async function getDestinationFromNS(serviceNumber: string): Promise<string> {
-  const cached = journeyCache.get(serviceNumber)
-  if (cached && Date.now() - cached.ts < JOURNEY_CACHE_TTL) {
-    return cached.destination
-  }
-
-  try {
-    const today = new Date().toISOString().slice(0, 10)
-    const payload = await getJourneyPayload(serviceNumber, today)
-    const stops = payload.stops ?? []
-    const lastStop = stops[stops.length - 1]
-    const destination = lastStop?.stop?.name ?? ''
-    
-    if (destination) {
-      journeyCache.set(serviceNumber, { destination, ts: Date.now() })
-    }
-    return destination
-  } catch {
-    return ''
-  }
-}
 
 // ─── Normalise type string from VT API ───────────────────────────────────────
 
@@ -150,7 +124,7 @@ export async function GET() {
     const missingDestTrain = trains.filter(t => !t.destination)
     if (missingDestTrain.length > 0) {
       const destResults = await Promise.allSettled(
-        missingDestTrain.map(t => getDestinationFromNS(t.serviceNumber))
+        missingDestTrain.map(t => getTrainDestination(t.serviceNumber))
       )
       
       destResults.forEach((result, idx) => {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getVehicles } from '@/lib/ns-api'
+import { getVehicles, getTrainDestination } from '@/lib/ns-api'
 import { supabase } from '@/lib/supabase'
 
 // Called by Vercel Cron every 2 minutes (see vercel.json)
@@ -35,10 +35,12 @@ export async function GET(req: NextRequest) {
     const BATCH = 50
     let inserted = 0
 
-    const rows = moving.map(v => {
+    // Build initial rows from VT API + Supabase departure data
+    const trainRows = moving.map(v => {
       const ritId = v.ritId?.replace(/\s/g, '').split('-')[0].split('_')[0] ?? ''
       const dep   = depByNumber.get(ritId)
       return {
+        ritId,
         service_number:    ritId,
         lat:               v.lat,
         lng:               v.lng,
@@ -54,6 +56,20 @@ export async function GET(req: NextRequest) {
         materieel_nummers: v.materieel?.length ? v.materieel : null,
       }
     })
+
+    // Fetch destinations via NS journey API for trains still missing one (max 40)
+    const missingDest = trainRows.filter(r => !r.destination).slice(0, 40)
+    if (missingDest.length > 0) {
+      const results = await Promise.allSettled(missingDest.map(r => getTrainDestination(r.ritId)))
+      results.forEach((res, i) => {
+        if (res.status === 'fulfilled' && res.value) {
+          missingDest[i].destination = res.value
+        }
+      })
+    }
+
+    // Strip helper field before insert
+    const rows = trainRows.map(({ ritId: _ritId, ...r }) => r)
 
     for (let i = 0; i < rows.length; i += BATCH) {
       const { error } = await supabase
