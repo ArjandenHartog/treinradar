@@ -10,10 +10,6 @@ const CACHE_TTL = 2_000
 const journeyCache = new Map<string, { destination: string; ts: number }>()
 const JOURNEY_CACHE_TTL = 5 * 60 * 1000
 
-// ─── History snapshot: record once per train per 2min, in micro-batches ──────
-const lastSnapshotTime = new Map<string, number>()
-const SNAPSHOT_INTERVAL = 120_000  // 2 min — less DB pressure, still enough resolution
-
 /**
  * Lightweight positioned train — returned on every poll.
  * Real GPS position, speed, and heading from the Virtual Train API.
@@ -164,45 +160,6 @@ export async function GET() {
           if (trainInList && !trainInList.destination) {
             trainInList.destination = result.value
           }
-        }
-      })
-    }
-
-    // ── Save position history snapshots — send response first, then write ────
-    const nowMs2 = Date.now()
-    const toInsert = trains.filter(t => {
-      const last = lastSnapshotTime.get(t.id)
-      // Skip stationary trains (speed 0) unless we haven't recorded them yet
-      if (t.speedKmh === 0 && last) return false
-      return !last || nowMs2 - last > SNAPSHOT_INTERVAL
-    })
-    if (toInsert.length > 0) {
-      for (const t of toInsert) lastSnapshotTime.set(t.id, nowMs2)
-      // Split into small batches of 50 to avoid one giant DB call
-      const BATCH = 50
-      const rows = toInsert.map(t => ({
-        service_number:    t.serviceNumber,
-        type_code:         t.typeCode,
-        operator:          t.operator,
-        lat:               t.lat,
-        lng:               t.lng,
-        speed_kmh:         t.speedKmh,
-        heading:           t.heading,
-        delay:             t.delay,
-        cancelled:         t.cancelled,
-        destination:       t.destination,
-        origin:            t.origin,
-        materieel_nummers: t.materieelNummers.length > 0 ? t.materieelNummers : null,
-        recorded_at:       now.toISOString(),
-      }))
-      // Fire all batches fully async — do NOT await, do NOT block
-      Promise.resolve().then(() => {
-        for (let i = 0; i < rows.length; i += BATCH) {
-          supabase.from('train_position_history')
-            .insert(rows.slice(i, i + BATCH))
-            .then(({ error }) => {
-              if (error) console.warn('[positions] history insert error:', error.message)
-            })
         }
       })
     }
