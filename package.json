@@ -14,6 +14,8 @@
     "@vercel/analytics": "^1.6.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "db-vendo-client": "^6.10.8",
+    "hafas-client": "^6.3.6",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.576.0",
     "next": "16.1.6",
@@ -26,6 +28,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/hafas-client": "^6.3.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
