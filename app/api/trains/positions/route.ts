@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getVehicles, getTrainDestination } from '@/lib/ns-api'
 import { supabase } from '@/lib/supabase'
+import { getBelgianPositionsImmediate } from '@/lib/irail-api'
+import { getGermanPositionsImmediate }  from '@/lib/db-api'
 
 // ─── In-memory cache (500ms TTL for smooth real-time updates) ─────────────────
 let positionsCache: { data: unknown; timestamp: number } | null = null
@@ -72,9 +74,13 @@ export async function GET() {
       return NextResponse.json(positionsCache.data)
     }
 
+    // BE + DE are served from cache immediately; background refresh populates them for next poll
+    const belgianTrains = getBelgianPositionsImmediate()
+    const germanTrains  = getGermanPositionsImmediate()
+
     const vehicles = await getVehicles({ features: 'materieel' })
 
-    if (!vehicles.length) {
+    if (!vehicles.length && !belgianTrains.length && !germanTrains.length) {
       return NextResponse.json({ trains: [], count: 0, source: 'virtual-train-api-empty' })
     }
 
@@ -144,11 +150,18 @@ export async function GET() {
       })
     }
 
+    // ── Merge NS + Belgian + German trains ───────────────────────────────────
+    const allTrains = [
+      ...uniqueTrains,
+      ...belgianTrains as PositionedTrain[],
+      ...germanTrains  as PositionedTrain[],
+    ]
+
     const result = {
-      trains: uniqueTrains,
-      count:  uniqueTrains.length,
+      trains:    allTrains,
+      count:     allTrains.length,
       updatedAt: now.toISOString(),
-      source:    'virtual-train-api',
+      source:    'multi-source',
     }
 
     positionsCache = { data: result, timestamp: nowMs }

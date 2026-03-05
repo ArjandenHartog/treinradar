@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getJourneyPayload } from '@/lib/ns-api'
 import { supabase } from '@/lib/supabase'
 import { getStockInfo, FACILITY_LABEL, type Facility } from '@/lib/rolling-stock'
+import { activeTripIds, fetchTrip } from '@/lib/db-api'
 
 export interface StopInfo {
   name: string
@@ -91,13 +92,125 @@ function mapFacilities(raw: string[]): Facility[] {
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 
+// ─── Belgian (iRail) detail handler ──────────────────────────────────────────
+
+async function getBelgianDetail(serviceNumber: string): Promise<TrainDetail> {
+  const vehicleId = `BE.NMBS.${serviceNumber}`
+  const url = `https://api.irail.be/vehicle/?id=${encodeURIComponent(vehicleId)}&format=json&lang=en`
+  const now = new Date()
+
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Treinradar/1.0' },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) throw new Error(`iRail ${res.status}`)
+
+    const data = await res.json()
+    const rawStops = data.stops?.stop ?? []
+    const stopsArr: Array<Record<string, string>> = Array.isArray(rawStops) ? rawStops : [rawStops]
+
+    const stops: StopInfo[] = stopsArr.map((s, idx) => {
+      const depSec  = parseInt(s.scheduledDepartureTime ?? '0')
+      const arrSec  = parseInt(s.scheduledArrivalTime  ?? '0')
+      const depDelay = parseInt(s.departureDelay ?? '0')
+      const arrDelay = parseInt(s.arrivalDelay   ?? '0')
+
+      const plannedDep = depSec ? new Date(depSec * 1000).toISOString() : null
+      const plannedArr = arrSec ? new Date(arrSec * 1000).toISOString() : null
+      const actualDep  = depSec ? new Date((depSec + depDelay) * 1000).toISOString() : null
+      const actualArr  = arrSec ? new Date((arrSec + arrDelay) * 1000).toISOString() : null
+
+      const passTime = actualDep ?? plannedDep ?? actualArr ?? plannedArr
+      const passed   = s.left === '1' || (passTime ? new Date(passTime) < now : false)
+
+      return {
+        name:             s.station ?? '',
+        uicCode:          '',
+        lat:              parseFloat(s.stationinfo?.locationY ?? '0') || null,
+        lng:              parseFloat(s.stationinfo?.locationX ?? '0') || null,
+        plannedDeparture: idx < stopsArr.length - 1 ? plannedDep : null,
+        actualDeparture:  idx < stopsArr.length - 1 ? actualDep  : null,
+        plannedArrival:   idx > 0 ? plannedArr : null,
+        actualArrival:    idx > 0 ? actualArr  : null,
+        platform:         s.platform || null,
+        passed,
+        current:          false,
+        cancelled:        s.canceled === '1' || s.departureCanceled === '1',
+        crowdForecast:    null,
+        delaySeconds:     depDelay || arrDelay,
+      }
+    })
+
+    return { serviceNumber, material: null, stops, allowBikes: false, crowdForecast: null }
+  } catch {
+    return { serviceNumber, material: null, stops: [], allowBikes: false, crowdForecast: null }
+  }
+}
+
+// ─── German (transport.rest) detail handler ───────────────────────────────────
+
+async function getGermanDetail(serviceNumber: string): Promise<TrainDetail> {
+  const tripId = activeTripIds.get(serviceNumber)
+  if (!tripId) return { serviceNumber, material: null, stops: [], allowBikes: false, crowdForecast: null }
+
+  const now = new Date()
+  try {
+    const trip = await fetchTrip(tripId)
+    if (!trip) return { serviceNumber, material: null, stops: [], allowBikes: false, crowdForecast: null }
+
+    const stops: StopInfo[] = (trip.stopovers ?? []).map((s, idx) => {
+      const depMs = s.departure ? new Date(s.departure).getTime()
+                  : s.plannedDeparture ? new Date(s.plannedDeparture).getTime() : 0
+      const passed = depMs > 0 && depMs < now.getTime()
+
+      return {
+        name:             s.stop?.name ?? '',
+        uicCode:          '',
+        lat:              s.stop?.location?.latitude  ?? null,
+        lng:              s.stop?.location?.longitude ?? null,
+        plannedDeparture: idx < (trip.stopovers?.length ?? 0) - 1 ? (s.plannedDeparture ?? null) : null,
+        actualDeparture:  idx < (trip.stopovers?.length ?? 0) - 1 ? (s.departure        ?? null) : null,
+        plannedArrival:   idx > 0 ? (s.plannedArrival ?? null) : null,
+        actualArrival:    idx > 0 ? (s.arrival        ?? null) : null,
+        platform:         null,
+        passed,
+        current:          false,
+        cancelled:        s.cancelled ?? false,
+        crowdForecast:    null,
+        delaySeconds:     s.departureDelay ?? s.arrivalDelay ?? 0,
+      }
+    })
+
+    return { serviceNumber, material: null, stops, allowBikes: false, crowdForecast: null }
+  } catch {
+    return { serviceNumber, material: null, stops: [], allowBikes: false, crowdForecast: null }
+  }
+}
+
+// ─── Main route handler ───────────────────────────────────────────────────────
+
 export async function GET(req: NextRequest) {
   const ritnummer = req.nextUrl.searchParams.get('ritnummer')
+  const operator  = req.nextUrl.searchParams.get('operator') ?? ''
   if (!ritnummer) return NextResponse.json({ error: 'ritnummer required' }, { status: 400 })
 
-  const hit = infoCache.get(ritnummer)
+  const cacheKey = `${operator}_${ritnummer}`
+  const hit = infoCache.get(cacheKey)
   if (hit && Date.now() - hit.ts < CACHE_TTL) {
     return NextResponse.json(hit.data)
+  }
+
+  // ── Route to Belgian or German handler ────────────────────────────────────
+  if (operator === 'NMBS') {
+    const detail = await getBelgianDetail(ritnummer)
+    infoCache.set(cacheKey, { data: detail, ts: Date.now() })
+    return NextResponse.json(detail)
+  }
+  if (operator === 'DB' || operator.startsWith('DB ') || ritnummer.startsWith('DE_')) {
+    const detail = await getGermanDetail(ritnummer)
+    infoCache.set(cacheKey, { data: detail, ts: Date.now() })
+    return NextResponse.json(detail)
   }
 
   const now   = new Date()
@@ -264,7 +377,7 @@ export async function GET(req: NextRequest) {
     crowdForecast,
   }
 
-  infoCache.set(ritnummer, { data: detail, ts: Date.now() })
+  infoCache.set(cacheKey, { data: detail, ts: Date.now() })
   if (infoCache.size > 400) {
     const first = infoCache.keys().next().value
     if (first) infoCache.delete(first)

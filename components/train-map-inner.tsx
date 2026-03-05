@@ -43,7 +43,12 @@ const TYPE_BG: Record<string, string> = {
   ARR: '#065f46', RNT: '#b45309', VLL: '#b45309',
   FLI: '#065f46', GTW: '#065f46',
   QBZ: '#075985', BLN: '#164e63', DB: '#991b1b',
-  RRR: '#6b21a8', STP: '#166534', '?': '#374151',
+  RRR: '#6b21a8', STP: '#166534',
+  // Belgian NMBS
+  S: '#166534', P: '#15803d', L: '#14532d',
+  // German regional
+  RE: '#0f766e',
+  '?': '#374151',
 }
 function typeColor(code: string) { return TYPE_BG[code?.toUpperCase()] ?? TYPE_BG['?'] }
 
@@ -228,7 +233,7 @@ function TrainDetailPanel({ train, onClose, onStationClick, onStopsLoaded }: {
   useEffect(() => {
     setDetail(null)
     setLoading(true)
-    fetch(`/api/trains/info?ritnummer=${encodeURIComponent(train.serviceNumber)}`)
+    fetch(`/api/trains/info?ritnummer=${encodeURIComponent(train.serviceNumber)}&operator=${encodeURIComponent(train.operator)}`)
       .then(r => r.ok ? r.json() : null)
       .then((d: TrainDetail | null) => {
         setDetail(d)
@@ -494,7 +499,7 @@ function QuickPreviewPopover({
   useEffect(() => {
     setDetail(null)
     setLoading(true)
-    fetch(`/api/trains/info?ritnummer=${encodeURIComponent(train.serviceNumber)}`)
+    fetch(`/api/trains/info?ritnummer=${encodeURIComponent(train.serviceNumber)}&operator=${encodeURIComponent(train.operator)}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { setDetail(d); setLoading(false) })
       .catch(() => setLoading(false))
