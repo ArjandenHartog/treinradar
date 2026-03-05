@@ -47,6 +47,23 @@ export type PunctualitySnapshot = {
   created_at: string
 }
 
+export type TrainPositionHistory = {
+  id: number
+  service_number: string
+  type_code: string | null
+  operator: string | null
+  lat: number
+  lng: number
+  speed_kmh: number
+  heading: number
+  delay: number
+  cancelled: boolean
+  destination: string | null
+  origin: string | null
+  materieel_nummers: number[] | null
+  recorded_at: string
+}
+
 export type Disruption = {
   id: string
   title: string

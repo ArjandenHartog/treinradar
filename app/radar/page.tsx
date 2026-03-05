@@ -150,6 +150,9 @@ export default function RadarPage() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const mounted = useRef(true)
+  // Cache: treinen blijven 10s zichtbaar ook als de API ze een poll mist
+  const trainCache = useRef(new Map<string, { train: PositionedTrain; lastSeen: number }>())
+  const TRAIN_TTL = 10_000
 
   const fetchStations = useCallback(async () => {
     const res = await fetch('/api/stations')
@@ -162,7 +165,17 @@ export default function RadarPage() {
     const res = await fetch('/api/trains/positions')
     if (!res.ok || !mounted.current) return
     const d: { trains: PositionedTrain[] } = await res.json()
-    setTrains(d.trains ?? [])
+    if (!mounted.current) return
+    const now = Date.now()
+    // Update cache met verse data
+    for (const t of d.trains ?? []) {
+      trainCache.current.set(t.id, { train: t, lastSeen: now })
+    }
+    // Verwijder treinen die >10s niet meer gezien zijn
+    for (const [id, entry] of trainCache.current) {
+      if (now - entry.lastSeen > TRAIN_TTL) trainCache.current.delete(id)
+    }
+    setTrains([...trainCache.current.values()].map(e => e.train))
     setLastUpdate(new Date())
   }, [])
 
@@ -202,7 +215,7 @@ export default function RadarPage() {
   }, [fetchStations, fetchTrains, fetchStats, fetchDisruptions])
 
   useEffect(() => {
-    const t1 = setInterval(fetchTrains, 1_000) // Elke seconde voor real-time updates
+    const t1 = setInterval(fetchTrains, 3_000) // Elke 3s — icon memoization maakt 1s overbodig
     const t2 = setInterval(fetchStats, 30_000)
     const t3 = setInterval(fetchDisruptions, 90_000)
     return () => { clearInterval(t1); clearInterval(t2); clearInterval(t3) }

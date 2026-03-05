@@ -95,6 +95,15 @@ export function Header() {
           >
             Reisinformatie
           </Link>
+          <Link
+            href="/zoeken"
+            className={cn(
+              'rounded-md px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-colors',
+              isActive('/zoeken') ? 'bg-white/[0.08] text-white' : 'text-zinc-500 hover:text-zinc-300'
+            )}
+          >
+            Zoeken
+          </Link>
         </nav>
 
         {/* Right - desktop */}
@@ -195,6 +204,16 @@ export function Header() {
                 )}
               >
                 Reisinformatie
+              </Link>
+              <Link
+                href="/zoeken"
+                onClick={() => setMenuOpen(false)}
+                className={cn(
+                  'rounded-md px-3 py-2 text-[11px] font-medium uppercase tracking-wider transition-colors',
+                  isActive('/zoeken') ? 'bg-white/[0.08] text-white' : 'text-zinc-500 hover:text-zinc-300'
+                )}
+              >
+                Zoeken
               </Link>
             </nav>
             <div className="mt-3 flex items-center gap-2 border-t border-white/[0.06] pt-3">

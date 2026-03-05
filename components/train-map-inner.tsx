@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   MapContainer, TileLayer, Marker, Polyline,
   CircleMarker, LayersControl, GeoJSON, useMapEvents,
@@ -47,7 +47,44 @@ const TYPE_BG: Record<string, string> = {
 }
 function typeColor(code: string) { return TYPE_BG[code?.toUpperCase()] ?? TYPE_BG['?'] }
 
-// ─── Circle dot icon (replaces pill label) ────────────────────────────────────
+// ─── Pill label icon (type code like IC, SPR, ICE…) ──────────────────────────
+
+function makePillIcon(
+  typeCode: string,
+  delay: number,
+  cancelled: boolean,
+  selected: boolean,
+): L.DivIcon {
+  const bg    = typeColor(typeCode || '?')
+  const border = cancelled || delay >= 15 ? '#ef4444' : delay >= 3 ? '#f59e0b' : 'rgba(255,255,255,0.25)'
+  const scale  = selected ? 'scale(1.35)' : 'scale(1)'
+  const shadow = selected
+    ? '0 0 0 3px rgba(59,130,246,.45), 0 3px 10px rgba(0,0,0,.8)'
+    : '0 2px 6px rgba(0,0,0,.7)'
+  const label  = typeCode?.toUpperCase() || '?'
+  const w      = Math.max(28, label.length * 7 + 12)
+
+  return L.divIcon({
+    html: `<div style="
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:${w}px;height:18px;
+      background:${bg};
+      border:1.5px solid ${border};
+      border-radius:5px;
+      color:#fff;font-size:9px;font-weight:800;letter-spacing:.08em;
+      font-family:'Courier New',monospace;
+      box-shadow:${shadow};
+      transform:${scale};transform-origin:center;
+      opacity:${cancelled ? 0.6 : 1};
+      cursor:pointer;white-space:nowrap;padding:0 4px;
+    ">${label}</div>`,
+    className: '',
+    iconSize:  [w + 8, 26],
+    iconAnchor:[Math.round((w + 8) / 2), 13],
+  })
+}
+
+// ─── Circle dot icon ──────────────────────────────────────────────────────────
 
 function makeCircleIcon(
   delay: number,
@@ -654,58 +691,87 @@ function QuickPreviewPopover({
   )
 }
 
-// ─── Animated Circle Marker ───────────────────────────────────────────────────
+// ─── Animated Marker (dot or pill) ───────────────────────────────────────────
 
-function AnimatedCircleMarker({
+function AnimatedCircleMarkerInner({
   train,
   selected,
   inPopover,
   onSelect,
+  markerStyle,
 }: {
   train: PositionedTrain
   selected: boolean
   inPopover: boolean
-  onSelect: (clientX: number, clientY: number) => void
+  onSelect: (trainId: string, clientX: number, clientY: number) => void
+  markerStyle: 'dot' | 'pill'
 }) {
   const [animPos, setAnimPos] = useState({ lat: train.lat, lng: train.lng })
-  const prevPosRef = useRef({ lat: train.lat, lng: train.lng })
+  // visualRef tracks where the marker *actually is* on screen right now
+  const visualRef   = useRef({ lat: train.lat, lng: train.lng })
+  // targetRef tracks the last GPS target (to detect real changes)
+  const targetRef   = useRef({ lat: train.lat, lng: train.lng })
+  const startPosRef = useRef({ lat: train.lat, lng: train.lng })
   const startTimeRef = useRef(0)
   const rafRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
-    const prev = prevPosRef.current
-    if (prev.lat !== train.lat || prev.lng !== train.lng) {
-      prevPosRef.current = { lat: train.lat, lng: train.lng }
-      startTimeRef.current = Date.now()
-      const animate = () => {
-        const elapsed = Date.now() - startTimeRef.current
-        const progress = Math.min(elapsed / 1000, 1)
-        const ease = progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2
-        setAnimPos({
-          lat: prev.lat + (train.lat - prev.lat) * ease,
-          lng: prev.lng + (train.lng - prev.lng) * ease,
-        })
-        if (progress < 1) rafRef.current = requestAnimationFrame(animate)
+    // Skip if GPS hasn't changed
+    if (targetRef.current.lat === train.lat && targetRef.current.lng === train.lng) return
+
+    // Cancel any in-progress animation
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+
+    // Start from wherever the marker visually is right now (not the old GPS target)
+    startPosRef.current = { ...visualRef.current }
+    targetRef.current   = { lat: train.lat, lng: train.lng }
+    startTimeRef.current = Date.now()
+
+    const from = startPosRef.current
+    const to   = targetRef.current
+
+    const animate = () => {
+      const elapsed  = Date.now() - startTimeRef.current
+      const progress = Math.min(elapsed / 1200, 1)  // 1.2s feels smooth at 60-120s poll intervals
+      const ease = progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2
+      const pos = {
+        lat: from.lat + (to.lat - from.lat) * ease,
+        lng: from.lng + (to.lng - from.lng) * ease,
       }
-      rafRef.current = requestAnimationFrame(animate)
+      visualRef.current = pos
+      setAnimPos(pos)
+      if (progress < 1) rafRef.current = requestAnimationFrame(animate)
     }
+    rafRef.current = requestAnimationFrame(animate)
+
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [train.lat, train.lng])
+
+  // Memoize icon so Leaflet doesn't recreate the DOM element on every poll
+  const icon = useMemo(
+    () => markerStyle === 'pill'
+      ? makePillIcon(train.typeCode, train.delay, train.cancelled, selected || inPopover)
+      : makeCircleIcon(train.delay, train.cancelled, selected || inPopover),
+    [markerStyle, train.typeCode, train.delay, train.cancelled, selected, inPopover],
+  )
 
   return (
     <Marker
       position={[animPos.lat, animPos.lng]}
-      icon={makeCircleIcon(train.delay, train.cancelled, selected || inPopover)}
+      icon={icon}
       zIndexOffset={selected ? 2000 : inPopover ? 1000 : train.delay > 0 ? 100 : 0}
       eventHandlers={{
         click: (e) => {
           e.originalEvent.stopPropagation()
-          onSelect(e.originalEvent.clientX, e.originalEvent.clientY)
+          onSelect(train.id, e.originalEvent.clientX, e.originalEvent.clientY)
         },
       }}
     />
   )
 }
+
+// React.memo: skip re-render when props are reference-equal
+const AnimatedCircleMarker = React.memo(AnimatedCircleMarkerInner)
 
 // ─── Main map ─────────────────────────────────────────────────────────────────
 
@@ -735,6 +801,7 @@ export default function TrainMapInner({ stations, trains }: Props) {
   const [routeStops, setRouteStops] = useState<Array<[number, number]>>([])
   const [disruptionGeo, setDisruptionGeo] = useState<{ type: 'FeatureCollection'; features: unknown[] } | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [markerStyle, setMarkerStyle] = useState<'dot' | 'pill'>('dot')
   const mapRef = useRef<L.Map | null>(null)
   const { theme } = useTheme()
 
@@ -922,14 +989,15 @@ export default function TrainMapInner({ stations, trains }: Props) {
           />
         ))}
 
-        {/* Train circle markers */}
+        {/* Train markers (dot or pill) */}
         {trains.map(train => (
           <AnimatedCircleMarker
             key={train.id}
             train={train}
             selected={train.id === selectedId}
             inPopover={train.id === popover?.trainId}
-            onSelect={(x, y) => handleMarkerClick(train.id, x, y)}
+            onSelect={handleMarkerClick}
+            markerStyle={markerStyle}
           />
         ))}
 
@@ -949,6 +1017,36 @@ export default function TrainMapInner({ stations, trains }: Props) {
           </>
         )}
       </MapContainer>
+
+      {/* Marker style toggle — rechtsonder, boven Leaflet-attributie */}
+      <div style={{
+        position: 'absolute', bottom: 28, right: 8, zIndex: 1000,
+        display: 'flex', borderRadius: 8, overflow: 'hidden',
+        border: '1px solid rgba(255,255,255,0.15)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
+      }}>
+        {(['dot', 'pill'] as const).map(style => (
+          <button
+            key={style}
+            onClick={() => setMarkerStyle(style)}
+            title={style === 'dot' ? 'Toon stippen' : 'Toon treintype labels'}
+            style={{
+              padding: '6px 12px',
+              background: markerStyle === style ? '#1d4ed8' : '#18181b',
+              color: markerStyle === style ? '#fff' : '#6b7280',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: 700,
+              fontFamily: "'Courier New', monospace",
+              letterSpacing: '.06em',
+              transition: 'background .15s, color .15s',
+            }}
+          >
+            {style === 'dot' ? '●  Stip' : 'IC  Label'}
+          </button>
+        ))}
+      </div>
 
       {/* Quick preview popover */}
       {popoverTrain && popover && (
