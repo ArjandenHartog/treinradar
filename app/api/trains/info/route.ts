@@ -142,9 +142,10 @@ export async function GET(req: NextRequest) {
     }
   })
 
-  // ── Extract material from actualStock (first stop that has it) ────────────
+  // ── Extract material from actualStock (with plannedStock fallback) ────────
   const stockStop  = journeyPayload.stops.find(s => s.actualStock?.trainParts?.length)
-  const stockData  = stockStop?.actualStock
+                  ?? journeyPayload.stops.find(s => s.plannedStock?.trainParts?.length)
+  const stockData  = stockStop?.actualStock ?? stockStop?.plannedStock
   const firstPart  = stockData?.trainParts?.[0]
 
   const imageUri   = firstPart?.image?.uri ?? null
@@ -152,14 +153,21 @@ export async function GET(req: NextRequest) {
   const facilities = mapFacilities(rawFac)
   const numParts   = stockData?.numberOfParts ?? null
   const totalSeats = stockData?.numberOfSeats ?? null
-  const trainType  = stockData?.trainType ?? null
-  const stockIds   = stockData?.trainParts?.map(p => p.stockIdentifier ?? '').filter(Boolean) ?? []
-  
-  const trainParts = stockData?.trainParts?.map(p => ({
-    number: p.stockIdentifier ?? '',
-    type: trainType,
-    facilities: p.facilities ?? [],
-  })) ?? []
+  // materialType (per-part) takes priority over top-level trainType
+  const trainType  = firstPart?.materialType ?? stockData?.trainType ?? null
+  // Filter out invalid stock identifiers ("0", "")
+  const stockIds   = stockData?.trainParts
+    ?.map(p => p.stockIdentifier ?? '')
+    .filter(id => id && id !== '0') ?? []
+
+  const trainParts = stockData?.trainParts?.map(p => {
+    const num = p.stockIdentifier && p.stockIdentifier !== '0' ? p.stockIdentifier : ''
+    return {
+      number: num,
+      type: p.materialType ?? trainType,
+      facilities: p.facilities ?? [],
+    }
+  }) ?? []
 
   let material: MaterialInfo | null = null
 

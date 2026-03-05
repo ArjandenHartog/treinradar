@@ -155,6 +155,7 @@ export interface NSJourneyStopStock {
   numberOfParts?: number
   trainParts?: Array<{
     stockIdentifier?: string
+    materialType?: string    // e.g. "SNG", "VIRM" — often more accurate than trainType
     facilities?: string[]
     image?: { uri?: string }
   }>
@@ -173,7 +174,7 @@ export interface NSJourneyStop {
   departures: NSJourneyStopEvent[]
   arrivals: NSJourneyStopEvent[]
   actualStock?: NSJourneyStopStock
-  plannedStock?: NSJourneyStopStock
+  plannedStock?: NSJourneyStopStock  // fallback when actualStock is absent
 }
 
 // Full journey payload – includes stops AND material/stock metadata

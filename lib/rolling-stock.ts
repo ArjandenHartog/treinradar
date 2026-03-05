@@ -360,8 +360,12 @@ function normalise(raw: string): string {
   const u = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
   // Known aliases
   const MAP: Record<string, string> = {
-    'SNGDOORSERIES':  'SNG',
-    'SNGFLIRT3':      'SNG',
+    // SNG — full names the NS journey API sometimes returns
+    'SNGDOORSERIES':           'SNG',
+    'SNGFLIRT3':               'SNG',
+    'SPRINTERNIEUWEGENERATIE': 'SNG',
+    // ICNG full name
+    'INTERCITYNIEUWEGENERATIE': 'ICNG',
     // VIRM varianten — bewaar m1/m2 distinctie
     'VIRMM1':         'VIRMM1',
     'VIRMM2':         'VIRMM2',

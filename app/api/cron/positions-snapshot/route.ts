@@ -12,7 +12,19 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const vehicles = await getVehicles({ features: 'materieel' })
+    const [vehicles, { data: departures }] = await Promise.all([
+      getVehicles({ features: 'materieel' }),
+      supabase
+        .from('train_departures')
+        .select('service_number, destination, destination_actual, type_code, operator, delay, cancelled, origin, station_code')
+        .gte('updated_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()),
+    ])
+
+    const depByNumber = new Map<string, NonNullable<typeof departures>[number]>()
+    for (const d of departures ?? []) {
+      if (!depByNumber.has(d.service_number)) depByNumber.set(d.service_number, d)
+    }
+
     const moving = vehicles.filter(v => v.lat && v.lng && (v.snelheid ?? 0) > 0)
 
     if (!moving.length) {
@@ -23,14 +35,25 @@ export async function GET(req: NextRequest) {
     const BATCH = 50
     let inserted = 0
 
-    const rows = moving.map(v => ({
-      service_number:    v.ritId?.replace(/\s/g, '').split('-')[0].split('_')[0] ?? '',
-      lat:               v.lat,
-      lng:               v.lng,
-      speed_kmh:         Math.round(v.snelheid ?? 0),
-      heading:           v.richting ?? 0,
-      recorded_at:       now,
-    }))
+    const rows = moving.map(v => {
+      const ritId = v.ritId?.replace(/\s/g, '').split('-')[0].split('_')[0] ?? ''
+      const dep   = depByNumber.get(ritId)
+      return {
+        service_number:    ritId,
+        lat:               v.lat,
+        lng:               v.lng,
+        speed_kmh:         Math.round(v.snelheid ?? 0),
+        heading:           v.richting ?? 0,
+        recorded_at:       now,
+        type_code:         dep?.type_code ?? null,
+        operator:          dep?.operator ?? null,
+        destination:       dep?.destination_actual || dep?.destination || null,
+        origin:            dep?.origin ?? dep?.station_code ?? null,
+        delay:             dep?.delay ?? 0,
+        cancelled:         dep?.cancelled ?? false,
+        materieel_nummers: v.materieel?.length ? v.materieel : null,
+      }
+    })
 
     for (let i = 0; i < rows.length; i += BATCH) {
       const { error } = await supabase
